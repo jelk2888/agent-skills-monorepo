@@ -1,0 +1,21 @@
+{
+  "name": "genini_web_access",
+  "version": "2.0.0",
+  "description": "Gemini Web Access - Chrome CDP batch image generation",
+  "main": "scripts/gemini_web_access.js",
+  "scripts": {
+    "start": "node scripts/gemini_web_access.js"
+  },
+  "dependencies": {
+    "ws": "^18.0.0",
+    "sharp": "^0.33.0"
+  },
+  "keywords": [
+    "gemini",
+    "batch",
+    "image-generation",
+    "cdp",
+    "chrome"
+  ],
+  "license": "MIT"
+}

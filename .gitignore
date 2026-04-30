@@ -1,0 +1,23 @@
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+dist/
+.next/
+.turbo/
+coverage/
+*.local
+
+# NotebookLM 本地数据（目录占位可提交，内容忽略）
+**/notebooklm/data/**
+!**/notebooklm/data/
+!**/notebooklm/data/.gitkeep

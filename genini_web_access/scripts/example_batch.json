@@ -1,0 +1,22 @@
+[
+  {
+    "prompt": "中国苏州园林中的古典亭台楼阁，烟雨蒙蒙，水墨画风格",
+    "outputName": "suzhou_garden.png"
+  },
+  {
+    "prompt": "中国敦煌莫高窟内景，飞天壁画，金碧辉煌",
+    "outputName": "dunhuang_mogao.png"
+  },
+  {
+    "prompt": "中国桂林漓江山水，竹筏漂流，喀斯特地貌",
+    "outputName": "guilin_liriver.png"
+  },
+  {
+    "prompt": "中国成都宽窄巷子夜景，红灯笼，川西建筑",
+    "outputName": "chengdu_alley.png"
+  },
+  {
+    "prompt": "中国青藏高原上的牦牛群，雪山背景",
+    "outputName": "tibet_plateau.png"
+  }
+]
