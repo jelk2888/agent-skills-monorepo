@@ -50,7 +50,6 @@
 | **web-access** | 联网操作技能，包括搜索、网页抓取、登录后操作、网络交互等 |
 | **wechat-article-downloader** | 微信公众号文章下载器，支持多种格式下载 |
 | **wechat-download** | 微信内容下载工具 |
-| **winxin_down** | 微信内容下载（重复技能） |
 
 ### 🤖 AI 与模型集成类
 
@@ -167,7 +166,6 @@ agent-skills-monorepo/
 ├── wechat-article-downloader/     # 微信文章下载
 ├── wechat-download/               # 微信下载
 ├── wewrite/                       # 微信写作
-├── winxin_down/                   # 微信下载（重复）
 ├── xiaohu-wechat-cover/           # 微信封面
 ├── xiaohu-wechat-format-main/     # 微信排版
 ├── .gitignore                     # Git 忽略文件
@@ -215,7 +213,7 @@ git push -u origin main
 
 ## ⚠️ 注意事项
 
-1. **重复技能**：某些技能可能存在重复（如 `wechat-download` 和 `winxin_down`），建议保留功能更完整的版本
+1. **重复技能**：已清理重复技能，保留功能更完整的版本
 2. **API 密钥**：部分技能需要配置 API 密钥，请参考各技能目录下的配置说明
 3. **环境变量**：某些技能可能需要设置环境变量，请查看各技能的 `SKILL.md`
 4. **安全配置**：请确保不要将真实的 API 密钥、密码等敏感信息提交到仓库
