@@ -49,6 +49,7 @@
 |---------|---------|
 | **baoyu-url-to-markdown** | 获取 URL 并转换为 Markdown，支持多种网站和内容类型 |
 | **web-access** | 联网操作技能，包括搜索、网页抓取、登录后操作、网络交互等 |
+| **agent-reach** | 多平台网络访问技能，支持 Twitter、YouTube、Bilibili、小红书、抖音、微信公众号、LinkedIn、GitHub、Reddit 等 13+ 平台的搜索和内容读取 |
 | **wechat-article-downloader** | 微信公众号文章下载器，支持多种格式下载 |
 | **wechat-download** | 微信内容下载工具 |
 
@@ -176,6 +177,7 @@ agent-skills-monorepo/
 ├── update-cursor-settings/        # 更新 Cursor 设置
 ├── using-superpowers/             # 使用超能力
 ├── web-access/                    # 网页访问
+├── agent-reach/                   # 多平台网络访问
 ├── webapp-testing/                # Web 应用测试
 ├── wechat-article-downloader/     # 微信文章下载
 ├── wechat-content-skill/          # 微信内容创作（来自 ModelScope）
