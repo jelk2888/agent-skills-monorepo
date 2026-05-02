@@ -174,6 +174,22 @@ python3 scripts/generate.py \
 
 完整提示词模板和工作流详见 `cover/SKILL.md`。
 
+### gemini_batch_gen 批量生成
+
+xiaohu-wechat-format 集成了 `gemini_batch_gen.js` 批量图片生成工具，支持自动登录、批量生成、优雅关闭等功能：
+
+```javascript
+// 在 code execution 中调用
+const { batchGenerate } = require('./scripts/gemini_batch_gen');
+const items = [
+  { prompt: '封面提示词', outputName: 'cover.png' },
+  { prompt: '内文配图1', outputName: 'image1.png' }
+];
+await batchGenerate(items, './output/images');
+```
+
+gemini_batch_gen 会自动连接 gemini-skill，首次使用，会自动检测登录状态，批量生成后自动保存到指定目录。
+
 ## 自定义主题
 
 在 `themes/` 目录下创建 JSON 文件。参考 `themes/newspaper.json`。

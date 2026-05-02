@@ -1,0 +1,71 @@
+{
+    "tavily_api_key": "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",
+    "search_queries": [
+        {
+            "name": "OpenAI 官方动态",
+            "query": "site:openai.com/blog OR site:openai.com/news latest AI",
+            "weight": 10
+        },
+        {
+            "name": "Anthropic 官方动态",
+            "query": "site:anthropic.com/news OR site:anthropic.com/research latest AI",
+            "weight": 10
+        },
+        {
+            "name": "Google AI 博客",
+            "query": "site:blog.google/technology/ai latest",
+            "weight": 9
+        },
+        {
+            "name": "AI Base 资讯 (极佳)",
+            "query": "site:aibase.com/zh/news latest AI",
+            "weight": 10
+        },
+        {
+            "name": "新智元 (AIERA)",
+            "query": "site:aiera.com.cn latest AI",
+            "weight": 9
+        },
+        {
+            "name": "极客公园 (AI 新浪潮)",
+            "query": "site:geekpark.net/column/304 latest",
+            "weight": 9
+        },
+        {
+            "name": "何夕 AI 资讯日报",
+            "query": "site:ai.hubtoday.app latest",
+            "weight": 8
+        },
+        {
+            "name": "36氪 AI 前沿",
+            "query": "site:36kr.com/information/AI latest",
+            "weight": 8
+        },
+        {
+            "name": "掘金 AI 技术社区",
+            "query": "site:juejin.cn/tag/人工智能 sort:newest",
+            "weight": 8
+        },
+        {
+            "name": "TechCrunch AI 板块",
+            "query": "site:techcrunch.com/category/artificial-intelligence latest",
+            "weight": 7
+        },
+        {
+            "name": "Hugging Face 趋势",
+            "query": "site:huggingface.co/blog latest AI models",
+            "weight": 7
+        },
+        {
+            "name": "国内 AI 动态 (机器之心/量子位)",
+            "query": "site:jiqizhixin.com OR site:qbitai.com 最新 AI",
+            "weight": 8
+        }
+    ],
+    "monitoring_settings": {
+        "max_results_per_query": 5,
+        "time_range_days": 2,
+        "depth_search_rounds": 3,
+        "min_score_threshold": 6.0
+    }
+}

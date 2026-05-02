@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "updated": "2026-01-26T09:33:00Z",
+  "topics_count": 1,
+  "sources_count": 1,
+  "topics": [
+    {
+      "id": "topic-20260126-01",
+      "title": "腾讯元宝春节红包大战：AI是如何介入社交仪式的？",
+      "category": "AI应用",
+      "status": "draft",
+      "created": "2026-01-26"
+    }
+  ],
+  "sources": [
+    {
+      "id": "source-20260126-01",
+      "title": "腾讯元宝App春节撒币10亿：规则与玩法详解",
+      "quality": "high",
+      "fetch_date": "2026-01-26"
+    }
+  ],
+  "keywords": {
+    "腾讯元宝": [
+      "topic-20260126-01"
+    ],
+    "红包": [
+      "topic-20260126-01"
+    ],
+    "10亿": [
+      "topic-20260126-01"
+    ],
+    "派入口": [
+      "topic-20260126-01"
+    ]
+  }
+}

@@ -39,6 +39,7 @@
 |---------|---------|
 | **khazix-writer** | 数字生命卡兹克的公众号长文写作技能，适用于撰写高质量文章 |
 | **wewrite** | 微信公众号内容全流程助手：热点抓取 → 选题 → 框架 → 内容增强 → 写作 → SEO → 视觉 AI → 排版推送 |
+| **wechat-content-skill** | 公众号内容创作助手 - 帮助高效采集素材、筛选选题、创作优质文章（支持 4 种工作模式，深度写作系统） |
 | **xiaohu-wechat-cover** | 公众号封面图生成器，一键生成美观的封面图 |
 | **xiaohu-wechat-format-main** | 公众号一键排版，将任意文本内容转化为微信公众号兼容的排版格式 |
 
@@ -123,6 +124,19 @@
 - **触发词**：公众号、推文、微信文章、微信推文、草稿箱、微信排版、选题、热搜、热点抓取、封面图、配图、写公众号
 - **功能**：微信公众号内容全流程助手
 
+#### WeChat Content Skill（微信内容创作）
+- **触发词**：@wechat-content 搜索、@wechat-content 采集、@wechat-content 查找、@wechat-content 撰写
+- **核心能力**：
+  1. **内容采集**：搜索 + 采集 + 深度分析
+  2. **素材管理**：积累 + 索引 + 快速调用
+  3. **深度写作**：反转驱动 + 观点锋利 + 一次生成 3 篇
+- **工作模式**：
+  - **模式 A（临时搜索）**：@wechat-content 搜索 [关键词] - 实时搜索分析话题
+  - **模式 B（素材积累）**：@wechat-content 采集 [关键词] - 自动化采集存入素材库
+  - **模式 C（调用素材）**：@wechat-content 查找 [关键词] - 搜索已有素材
+  - **模式 D（创作文章）**：@wechat-content 撰写 [选题ID或关键词] - 一次生成3篇不同角度文章
+- **特色**：内置深度写作系统，注重观点反转、信息增量，避免低价值内容
+
 ---
 
 ## 📂 目录结构
@@ -164,6 +178,7 @@ agent-skills-monorepo/
 ├── web-access/                    # 网页访问
 ├── webapp-testing/                # Web 应用测试
 ├── wechat-article-downloader/     # 微信文章下载
+├── wechat-content-skill/          # 微信内容创作（来自 ModelScope）
 ├── wechat-download/               # 微信下载
 ├── wewrite/                       # 微信写作
 ├── xiaohu-wechat-cover/           # 微信封面

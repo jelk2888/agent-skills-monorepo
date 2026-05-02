@@ -229,6 +229,20 @@ python3 {baseDir}/scripts/format.py \
 3. 调用图片生成服务（需在 `config.json` 中配置 `cover.image_generation_script`，或手动使用任意 AI 生图工具）
 4. 生成后默认插入文章标题下方
 
+**gemini_batch_gen 集成**：可以使用 `gemini_batch_gen.js 进行批量图片生成，功能包括：自动登录检测、批量生成、优雅关闭（保留登录状态）、会话管理等。使用方式：
+
+```javascript
+// 在 code execution 中调用
+const { batchGenerate } = require('{skill_dir}/scripts/gemini_batch_gen');
+const items = [
+  { prompt: '封面提示词', outputName: 'cover.png' },
+  { prompt: '其他配图', outputName: 'image.png' }
+];
+await batchGenerate(items, '{workspace}/output/images');
+```
+
+gemini_batch_gen 会自动连接 gemini-skill，首次使用，会自动检测登录状态，批量生成后自动保存到指定目录。
+
 ---
 
 ### 推送到公众号草稿箱（可选）

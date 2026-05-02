@@ -169,6 +169,22 @@ Or with Claude Code, just say: `给这篇文章配个封面`
 
 See `cover/SKILL.md` for the full prompt template and workflow details.
 
+### gemini_batch_gen Batch Generation
+
+xiaohu-wechat-format integrates `gemini_batch_gen.js` for batch image generation with features like auto-login detection, batch generation, and graceful shutdown:
+
+```javascript
+// Call in code execution
+const { batchGenerate } = require('./scripts/gemini_batch_gen');
+const items = [
+  { prompt: 'Cover prompt', outputName: 'cover.png' },
+  { prompt: 'Article image 1', outputName: 'image1.png' }
+];
+await batchGenerate(items, './output/images');
+```
+
+gemini_batch_gen automatically connects to gemini-skill, detects login status on first use, and saves generated images to the specified directory after batch completion.
+
 ## How WeChat Compatibility Works
 
 WeChat's editor strips `<style>` tags and CSS classes. This tool:

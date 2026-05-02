@@ -195,6 +195,7 @@ wewrite/
 │   ├── publisher.py            # 微信草稿箱 API + 小绿书图片帖
 │   ├── wechat_api.py           # access_token / 图片上传
 │   ├── image_gen.py            # AI 图片生成（9 provider，自动 fallback）
+│   ├── gemini_batch_gen.js     # Gemini 批量图片生成（自动登录、会话管理、优雅关闭）
 │   └── themes/                 # 16+ 排版主题（含暗黑模式，可从文章学习新增）
 │
 ├── personas/                 # 5 套写作人格预设（含朱雀实测数据）

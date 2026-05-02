@@ -393,6 +393,20 @@ python3 {skill_dir}/scripts/humanness_score.py {article_path} --json --tier3 {ag
 
 **降级**：image_gen.py 支持多 provider 自动 fallback（按 config.yaml 中 providers 列表顺序尝试）。全部失败 → 输出提示词 + 备选图库关键词，继续。
 
+**gemini_batch_gen 集成**：可以使用 `gemini_batch_gen.js 进行批量图片生成，功能包括：自动登录检测、批量生成、优雅关闭（保留登录状态）、会话管理等。使用方式：
+
+```javascript
+// 在 code execution 中调用
+const { batchGenerate } = require('{skill_dir}/toolkit/gemini_batch_gen');
+const items = [
+  { prompt: '封面提示词', outputName: 'cover.png' },
+  { prompt: '内文配图1', outputName: 'image1.png' }
+];
+await batchGenerate(items, '{workspace}/output/images');
+```
+
+gemini_batch_gen 会自动连接 gemini-skill，首次使用，会自动检测登录状态，批量生成后自动保存到指定目录。
+
 ---
 
 ### Step 7: 排版 + 发布
