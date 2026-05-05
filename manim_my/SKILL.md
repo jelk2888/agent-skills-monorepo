@@ -14,7 +14,7 @@ description: |
   调研、研究、深度讲解、文献、定理、实验。
   也适用于用户想要将数学/物理概念可视化为动画、创建教育视频、制作数学解释视频、
   生成公式推导动画、上传题目图片生成讲解视频、先调研再制作教学视频等场景。
-version: "2.5.0"
+version: "2.6.0"
 ---
 
 # Manim 物理/数学动画创作技能（3b1b 风格增强版）
@@ -159,7 +159,8 @@ class FirstMath(Scene):
 Step 0 [5秒]: 判断输入类型
 ├── 用户上传了图片 → 图片讲解模式 → 跳到 十六、图片讲解视频工作流
 ├── 用户要求调研/深度讲解 → 研究员模式 → 跳到 十七、研究员模式工作流
-└── 用户给出文字描述 → 继续以下步骤
+├── 用户给出文字描述 → 默认使用研究员模式 → 跳到 十七
+└── 用户明确要求快速/简单 → 标准流程 → 继续以下步骤
 
 Step 1 [30秒]: 判断复杂度 → 确定工作模式
 ├── 简单任务（单概念<2分钟动画）→ 快速编码模式 → 跳到 四、快速编码
@@ -1544,11 +1545,422 @@ class ResearchReport:
 
 ---
 
-> 本Skill v2.5.0 由 manim_my + manim-math-animation + Manim Community 官方示例库 + 社区教程融合升级
+## 十八、默认视频生成规范（强制执行）
+
+> **v2.6.0 新增**：所有视频生成必须遵守以下规范，除非用户明确要求覆盖。
+> 这些规范确保视频质量、音画同步、图形规范和视觉一致性。
+
+### 18.1 技术栈默认配置
+
+```python
+from manim import *
+from manim_voiceover import VoiceoverScene
+from manim_voiceover.services.edge_tts import EdgeTTSService
+
+class StandardScene(VoiceoverScene):
+    def construct(self):
+        self.set_speech_service(EdgeTTSService(
+            voice="zh-CN-YunyangNeural"
+        ))
+```
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| Manim版本 | ManimCommunity | `from manim import *` |
+| 语音引擎 | manim-voiceover + EdgeTTS | 中文男声 zh-CN-YunyangNeural |
+| 分辨率 | 1920×1080 | 1080p |
+| 帧率 | 60fps | 高质量输出 |
+| 背景色 | #1e1e2e | 深色背景 |
+| 后期加速 | 1.3x | 视频+音频同步加速 |
+| 字幕方式 | SRT烧录 | 不在动画内画字幕 |
+
+**渲染命令**：
+```bash
+manim -pqh scene.py SceneName    # 1080p 60fps 高质量
+```
+
+**后期处理管线**（先烧字幕再加速）：
+```bash
+# 1. 渲染视频（manim-voiceover 自动生成 SRT）
+manim -pqh scene.py SceneName
+
+# 2. 烧录 SRT 字幕
+ffmpeg -i output.mp4 -vf "subtitles=output.srt:force_style='FontSize=18,PrimaryColour=&HFFFFFF'" -c:a copy subtitled.mp4
+
+# 3. 同时加速视频和音频 1.3x
+ffmpeg -i subtitled.mp4 -filter_complex "[0:v]setpts=PTS/1.3[v];[0:a]atempo=1.3[a]" -map "[v]" -map "[a]" final.mp4
+```
+
+### 18.2 图形标注规范
+
+**几何图形必须遵循解题标准**：
+
+| 标注类型 | 规范 | 代码模式 |
+|---------|------|---------|
+| 角度标注 | 用 `Angle` 标注，弧线+度数 | `Angle(line1, line2, radius=0.4, color=GREEN_C)` |
+| 边标注 | 标签放在边的**外部**，不遮挡边线 | `MathTex("a").next_to(line, direction_outward, buff=0.15)` |
+| 点标注 | 标签放在点的外侧，远离图形中心 | `MathTex("A").next_to(dot, outward_direction, buff=0.15)` |
+| 辅助线/延长线 | 一律使用**虚线** | `DashedLine(start, end, color=YELLOW_C, dash_length=0.15)` |
+| 图形验证 | 生成后检查图形是否符合题意 | 交叉验证题目条件与图形参数 |
+
+**边标注方向计算**：
+```python
+def get_outward_direction(line, center=ORIGIN):
+    mid = line.get_center()
+    direction = mid - center
+    direction = direction / np.linalg.norm(direction)
+    return direction
+
+edge_label = MathTex("a", font_size=24).next_to(
+    line, get_outward_direction(line, triangle_center), buff=0.15
+)
+```
+
+### 18.3 动画时长对齐语音
+
+**核心规则**：`run_time=tracker.duration`，确保动画不慢于讲解。
+
+```python
+with self.voiceover(text="这是一个三角形") as tracker:
+    self.play(Create(triangle), run_time=tracker.duration)
+
+with self.voiceover(text="我们标注角A等于60度") as tracker:
+    self.play(Create(angle_A), Write(angle_label), run_time=tracker.duration)
+```
+
+**无语音时的时长**：
+- 简单动画（FadeIn/Create）：0.7-1.0秒
+- 复杂动画（Transform/逐步展示）：1.2-2.0秒
+- 停顿：0.5-1.0秒
+
+### 18.4 字幕规范
+
+| 规则 | 实现 |
+|------|------|
+| 只用 SRT 烧录字幕 | ffmpeg 烧录，不在动画内画字幕 |
+| 字幕字号 = 主标题字号的一半 | 主标题36 → 字幕FontSize=18 |
+| 先烧字幕再加速 | 保持音画同步 |
+
+**字幕样式**：
+```bash
+ffmpeg -i video.mp4 -vf "subtitles=output.srt:force_style='FontSize=18,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Alignment=2'" -c:a copy subtitled.mp4
+```
+
+### 18.5 Mobject 生命周期管理
+
+**所有 mobject 保存到变量，FadeOut 淡出原始变量**：
+
+```python
+# ✅ 正确：保存到变量，FadeOut原始变量
+title = Text("题目", font_size=36)
+self.play(FadeIn(title, shift=RIGHT))
+# ... 使用完毕后
+self.play(FadeOut(title))
+
+# ❌ 错误：不保存变量，导致动画残留
+self.play(FadeIn(Text("题目")))  # 无法后续移除！
+
+# ❌ 错误：用 self.remove() 而非 FadeOut
+self.remove(title)  # 突然消失，没有过渡
+```
+
+**变量命名规范**：
+```python
+# 图形元素
+tri = Polygon(...)          # 三角形
+circle = Circle(...)        # 圆
+line_AB = Line(A, B)        # 线段AB
+angle_A = Angle(...)        # 角A
+dot_A = Dot(A)              # 点A
+label_A = MathTex("A")      # 标签A
+
+# 文字元素
+title = Text(...)           # 标题
+formula_1 = MathTex(...)    # 公式
+step_1 = MathTex(...)       # 步骤
+result = MathTex(...)       # 结果
+```
+
+### 18.6 文字动画规范
+
+**文字用向右淡入效果**：
+
+```python
+# 所有文字出现用 FadeIn + shift=RIGHT
+self.play(FadeIn(title, shift=RIGHT * 0.3, run_time=0.7))
+self.play(FadeIn(formula, shift=RIGHT * 0.3, run_time=0.7))
+self.play(FadeIn(step_text, shift=RIGHT * 0.3, run_time=0.7))
+```
+
+**文字排列规范**：
+
+| 规则 | 实现 |
+|------|------|
+| 文字从上方开始排列 | `title.to_edge(UP)`, 后续文字 `next_to(prev, DOWN)` |
+| 不重叠标题 | 标题固定在 `to_edge(UP)` 或 `to_corner(UL)` |
+| 所有文字不重叠 | 用 `next_to` + `buff=0.3` 确保间距 |
+| 图形在标题和字幕之间 | 图形 y 范围：标题下方 ~ 字幕上方 |
+
+**布局模板**：
+```python
+# 标题区（上方）
+title = Text("题目", font_size=36).to_edge(UP, buff=0.3)
+
+# 图形区（中间）
+figure_group = VGroup(tri, dots, labels).move_to(ORIGIN)
+
+# 公式区（右侧或下方）
+formulas = VGroup(step1, step2, result).arrange(
+    DOWN, aligned_edge=LEFT, buff=0.4
+).next_to(figure_group, RIGHT, buff=0.5)
+
+# 字幕区（下方，由SRT烧录，不在动画内画）
+```
+
+### 18.7 闪烁强调规范
+
+**关键元素 vs 一般元素的闪烁次数和时长**：
+
+| 元素类型 | 定义 | 闪烁次数 | 每次时长 | 代码 |
+|---------|------|---------|---------|------|
+| **关键元素** | 角、边、全等结论等核心证明要素 | 3次 | 0.25秒 | `flash_key(mob)` |
+| **一般元素** | 直线、标签、三角形等辅助要素 | 2次 | 0.25秒 | `flash_normal(mob)` |
+
+**闪烁工具函数**：
+```python
+def flash_key(self, mob, color=YELLOW_C):
+    for _ in range(3):
+        self.play(Indicate(mob, color=color, scale_factor=1.2), run_time=0.25)
+
+def flash_normal(self, mob, color=YELLOW_C):
+    for _ in range(2):
+        self.play(Indicate(mob, color=color, scale_factor=1.15), run_time=0.25)
+```
+
+**使用示例**：
+```python
+self.play(Create(angle_A), Write(angle_label))
+self.flash_key(angle_A)          # 角是关键元素：3次闪烁
+self.flash_key(angle_label)      # 角度值是关键元素：3次闪烁
+
+self.play(Create(tri))
+self.flash_normal(tri)           # 三角形是一般元素：2次闪烁
+
+self.play(Write(result))
+self.flash_key(result)           # 结论是关键元素：3次闪烁
+```
+
+### 18.8 线段交点手动计算
+
+**ManimCommunity 无 `get_intersection` 方法，必须手动计算**：
+
+```python
+def line_intersection(p1, p2, p3, p4):
+    """
+    计算线段(p1,p2)和线段(p3,p4)的交点。
+    返回 np.array([x, y, 0])
+    """
+    x1, y1 = p1[0], p1[1]
+    x2, y2 = p2[0], p2[1]
+    x3, y3 = p3[0], p3[1]
+    x4, y4 = p4[0], p4[1]
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    if abs(denom) < 1e-10:
+        return None
+    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+    x = x1 + t * (x2 - x1)
+    y = y1 + t * (y2 - y1)
+    return np.array([x, y, 0])
+```
+
+**使用示例**：
+```python
+A = np.array([-2, 2, 0])
+B = np.array([3, -1, 0])
+C = np.array([-1, -2, 0])
+D = np.array([2, 3, 0])
+intersection = line_intersection(A, B, C, D)
+if intersection is not None:
+    dot = Dot(intersection, color=RED_C)
+    self.add(dot)
+```
+
+### 18.9 "图形-公式-讲解词"一致性审查
+
+**生成代码后，必须进行一致性审查**：
+
+```
+审查清单：
+├── 图形审查
+│   ├── 图形是否符合题意？（点/线/角/圆的位置关系正确？）
+│   ├── 标注是否完整？（所有已知条件都已标注？）
+│   ├── 边标注是否在外部？（不遮挡边线？）
+│   └── 辅助线是否用虚线？
+├── 公式审查
+│   ├── 公式是否与图形对应？（引用的变量名一致？）
+│   ├── 公式推导是否正确？（每步变形有依据？）
+│   └── 最终答案是否正确？
+├── 讲解词审查
+│   ├── 讲解词是否与动画同步？（run_time=tracker.duration？）
+│   ├── 讲解词是否与公式一致？（说的和写的一致？）
+│   └── 讲解词是否与图形一致？（描述的和画的一致？）
+└── 布局审查
+    ├── 文字是否从上方开始排列？
+    ├── 文字之间是否不重叠？
+    ├── 图形是否在标题和字幕之间？
+    └── 所有mobject是否保存到变量？
+```
+
+### 18.10 完整代码模板（含所有规范）
+
+```python
+from manim import *
+from manim_voiceover import VoiceoverScene
+from manim_voiceover.services.edge_tts import EdgeTTSService
+
+def line_intersection(p1, p2, p3, p4):
+    x1, y1 = p1[0], p1[1]
+    x2, y2 = p2[0], p2[1]
+    x3, y3 = p3[0], p3[1]
+    x4, y4 = p4[0], p4[1]
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    if abs(denom) < 1e-10:
+        return None
+    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+    x = x1 + t * (x2 - x1)
+    y = y1 + t * (y2 - y1)
+    return np.array([x, y, 0])
+
+class StandardExplanation(VoiceoverScene):
+    def construct(self):
+        self.set_speech_service(EdgeTTSService(voice="zh-CN-YunyangNeural"))
+
+        # ===== 标题区 =====
+        title = Text("题目文字", font="Noto Sans CJK SC", font_size=36)
+        title.to_edge(UP, buff=0.3)
+        with self.voiceover(text="题目文字") as tracker:
+            self.play(FadeIn(title, shift=RIGHT * 0.3), run_time=tracker.duration)
+
+        # ===== 图形区（标题和字幕之间）=====
+        A = UP * 1.5 + LEFT * 2
+        B = DOWN * 1.5 + LEFT * 3
+        C = DOWN * 1.5 + RIGHT * 3
+        tri = Polygon(A, B, C, color=WHITE)
+        dot_A = Dot(A, radius=0.06, color=GOLD_C)
+        dot_B = Dot(B, radius=0.06, color=GOLD_C)
+        dot_C = Dot(C, radius=0.06, color=GOLD_C)
+        label_A = MathTex("A", font_size=28).next_to(dot_A, UP, buff=0.15)
+        label_B = MathTex("B", font_size=28).next_to(dot_B, DL, buff=0.15)
+        label_C = MathTex("C", font_size=28).next_to(dot_C, DR, buff=0.15)
+
+        with self.voiceover(text="我们画出三角形ABC") as tracker:
+            self.play(Create(tri), run_time=tracker.duration)
+        self.flash_normal(tri)
+
+        # 角度标注（关键元素：3次闪烁）
+        line_AB = Line(A, B)
+        line_AC = Line(A, C)
+        angle_A = Angle(line_AB, line_AC, radius=0.4, color=GREEN_C)
+        angle_label = MathTex(r"60°", font_size=24, color=GREEN_C).next_to(
+            angle_A, RIGHT, buff=0.1
+        )
+        with self.voiceover(text="角A等于60度") as tracker:
+            self.play(Create(angle_A), FadeIn(angle_label, shift=RIGHT * 0.2), run_time=tracker.duration)
+        self.flash_key(angle_A)
+        self.flash_key(angle_label)
+
+        # 边标注（在外部）
+        center = tri.get_center()
+        edge_BC = Line(B, C)
+        bc_label = MathTex(r"a=6", font_size=24, color=BLUE_C).next_to(
+            edge_BC, get_outward_direction(edge_BC, center), buff=0.15
+        )
+        with self.voiceover(text="边BC等于6") as tracker:
+            self.play(FadeIn(bc_label, shift=RIGHT * 0.2), run_time=tracker.duration)
+        self.flash_key(bc_label)
+
+        # 辅助线（虚线）
+        aux_line = DashedLine(A, DOWN * 1.5 + LEFT * 2, color=YELLOW_C, dash_length=0.15)
+        with self.voiceover(text="作高") as tracker:
+            self.play(Create(aux_line), run_time=tracker.duration)
+        self.flash_normal(aux_line)
+
+        # ===== 公式区 =====
+        formula_1 = MathTex(r"S = \frac{1}{2}ah", font_size=32)
+        formula_2 = MathTex(r"S = \frac{1}{2} \times 6 \times 3.5", font_size=32)
+        result = MathTex(r"S = 10.5", font_size=40, color=RED_C)
+        formulas = VGroup(formula_1, formula_2, result).arrange(
+            DOWN, aligned_edge=LEFT, buff=0.4
+        ).to_edge(RIGHT, buff=0.5)
+
+        with self.voiceover(text="根据面积公式") as tracker:
+            self.play(FadeIn(formula_1, shift=RIGHT * 0.3), run_time=tracker.duration)
+        with self.voiceover(text="代入数值") as tracker:
+            self.play(FadeIn(formula_2, shift=RIGHT * 0.3), run_time=tracker.duration)
+        with self.voiceover(text="所以面积等于10.5") as tracker:
+            self.play(FadeIn(result, shift=RIGHT * 0.3), run_time=tracker.duration)
+        self.flash_key(result)
+
+        self.wait(1)
+
+        # ===== 清理：FadeOut所有变量 =====
+        self.play(
+            FadeOut(title), FadeOut(tri),
+            FadeOut(dot_A), FadeOut(dot_B), FadeOut(dot_C),
+            FadeOut(label_A), FadeOut(label_B), FadeOut(label_C),
+            FadeOut(angle_A), FadeOut(angle_label),
+            FadeOut(bc_label), FadeOut(aux_line),
+            FadeOut(formula_1), FadeOut(formula_2), FadeOut(result),
+        )
+
+    def flash_key(self, mob, color=YELLOW_C):
+        for _ in range(3):
+            self.play(Indicate(mob, color=color, scale_factor=1.2), run_time=0.25)
+
+    def flash_normal(self, mob, color=YELLOW_C):
+        for _ in range(2):
+            self.play(Indicate(mob, color=color, scale_factor=1.15), run_time=0.25)
+
+def get_outward_direction(line, center=ORIGIN):
+    mid = line.get_center()
+    direction = mid - center
+    norm = np.linalg.norm(direction)
+    if norm < 1e-10:
+        return UP
+    return direction / norm
+```
+
+### 18.11 默认规范速查表
+
+| 规范 | 默认值 | 代码/命令 |
+|------|--------|----------|
+| 默认模式 | 研究员模式 | 先调研再制作 |
+| 技术栈 | ManimCommunity + manim-voiceover + EdgeTTS | `EdgeTTSService(voice="zh-CN-YunyangNeural")` |
+| 分辨率/帧率 | 1080p 60fps | `manim -pqh` |
+| 动画对齐语音 | `run_time=tracker.duration` | `with self.voiceover(...) as tracker:` |
+| 字幕方式 | SRT烧录 | ffmpeg subtitles filter |
+| 字幕字号 | 主标题的一半 | `FontSize=18`（标题36时） |
+| Mobject管理 | 保存变量+FadeOut | `self.play(FadeOut(var))` |
+| 文字动画 | 向右淡入 | `FadeIn(text, shift=RIGHT * 0.3)` |
+| 辅助线/延长线 | 虚线 | `DashedLine(..., dash_length=0.15)` |
+| 关键元素闪烁 | 3次×0.25秒 | `flash_key(mob)` |
+| 一般元素闪烁 | 2次×0.25秒 | `flash_normal(mob)` |
+| 边标注 | 在边的外部 | `next_to(line, outward_dir, buff=0.15)` |
+| 文字排列 | 从上方开始，不重叠 | `to_edge(UP)` + `next_to(prev, DOWN, buff=0.3)` |
+| 图形位置 | 标题和字幕之间 | `move_to(ORIGIN)` 或偏移 |
+| 后期加速 | 1.3x视频+音频 | `setpts=PTS/1.3` + `atempo=1.3` |
+| 加速顺序 | 先烧字幕再加速 | 字幕→加速 |
+| 交点计算 | 手动计算 | `line_intersection(p1, p2, p3, p4)` |
+| 一致性审查 | 图形-公式-讲解词 | 生成后自动检查 |
+
+---
+
+> 本Skill v2.6.0 由 manim_my + manim-math-animation + Manim Community 官方示例库 + 社区教程融合升级
 > v2.0.0: 融合了3b1b风格DNA、完整SOP、隐喻库、质量检核、降级策略
 > v2.1.0: 新增150+官方动画示例参考（创建/淡入/生长/指示/变换/文本/图论/表格/3D/特效/布尔运算）
 > v2.2.0: 新增流线动画/向量场/LaggedStart/网格非线性变换/复数映射/交互模式/中文字体处理/manim.cfg配置/uv安装/manim init项目初始化；更新安装指南（v0.19.0+不再需要外部FFmpeg）
 > v2.3.0: 新增微积分教学动画/傅里叶级数可视化/神经网络可视化/梯度下降动画/函数变换/Matrix高级用法/AnimationGroup动画组合/apply_complex_function复数变换；概念映射表扩展至30+条
 > v2.4.0: 新增图片讲解视频功能——从上传题目图片自动分析→题型识别→图形重建→讲解脚本→Manim代码生成；6大题型模板（几何/函数/积分/方程/向量/物理）；图片分析提示词模板；讲解专用配色方案
 > v2.5.0: 新增研究员模式——先调研再制作：网络调研相关文章/定理/实验/经典例题→信息提炼→脉络构建→深度教学视频；5维调研框架；ResearchReport结构化输出；调研报告模板；各学科调研策略
+> v2.6.0: 新增默认视频生成规范（强制执行）——ManimCommunity+manim-voiceover+EdgeTTS(zh-CN-YunyangNeural)；1080p60fps；动画对齐语音时长；SRT烧录字幕（字号=标题一半）；Mobject变量管理+FadeOut；文字向右淡入；辅助线虚线；关键元素3次闪烁/一般2次×0.25秒；边标注在外部；手动计算线段交点；图形-公式-讲解词一致性审查；后期1.3x同步加速（先字幕再加速）
 > 保留了manim_my的领域覆盖（物理/数学/ML/范畴论）和工具链（渲染管线/环境检查）

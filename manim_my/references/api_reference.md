@@ -1094,3 +1094,84 @@ class ResearchReport:
 | 量子力学 | "double slit experiment" | Feynman QED |
 | 神经网络 | "backpropagation intuition" | 3b1b Neural Networks |
 | Transformer | "attention mechanism visualized" | Jay Alammar's blog |
+
+## 默认视频生成规范工具（v2.6.0）
+
+> 所有视频生成必须遵守的默认规范。详见 SKILL.md 十八、默认视频生成规范。
+
+### 闪烁工具函数
+
+```python
+def flash_key(self, mob, color=YELLOW_C):
+    """关键元素闪烁：3次×0.25秒"""
+    for _ in range(3):
+        self.play(Indicate(mob, color=color, scale_factor=1.2), run_time=0.25)
+
+def flash_normal(self, mob, color=YELLOW_C):
+    """一般元素闪烁：2次×0.25秒"""
+    for _ in range(2):
+        self.play(Indicate(mob, color=color, scale_factor=1.15), run_time=0.25)
+```
+
+| 元素类型 | 闪烁次数 | 每次时长 | 适用对象 |
+|---------|---------|---------|---------|
+| 关键元素 | 3次 | 0.25秒 | 角、边、全等结论等核心证明要素 |
+| 一般元素 | 2次 | 0.25秒 | 直线、标签、三角形等辅助要素 |
+
+### 线段交点手动计算
+
+```python
+def line_intersection(p1, p2, p3, p4):
+    """ManimCommunity无get_intersection，手动计算线段交点"""
+    x1, y1 = p1[0], p1[1]
+    x2, y2 = p2[0], p2[1]
+    x3, y3 = p3[0], p3[1]
+    x4, y4 = p4[0], p4[1]
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    if abs(denom) < 1e-10:
+        return None
+    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+    x = x1 + t * (x2 - x1)
+    y = y1 + t * (y2 - y1)
+    return np.array([x, y, 0])
+```
+
+### 边标注方向计算
+
+```python
+def get_outward_direction(line, center=ORIGIN):
+    """计算边标注的外侧方向"""
+    mid = line.get_center()
+    direction = mid - center
+    norm = np.linalg.norm(direction)
+    if norm < 1e-10:
+        return UP
+    return direction / norm
+```
+
+### 默认技术栈配置
+
+| 配置项 | 默认值 |
+|--------|--------|
+| Scene基类 | `VoiceoverScene` |
+| 语音服务 | `EdgeTTSService(voice="zh-CN-YunyangNeural")` |
+| 分辨率 | 1920×1080 |
+| 帧率 | 60fps |
+| 后期加速 | 1.3x（视频+音频同步） |
+| 字幕方式 | SRT烧录（FontSize=18） |
+| 文字动画 | `FadeIn(text, shift=RIGHT * 0.3)` |
+| 辅助线 | `DashedLine(..., dash_length=0.15)` |
+| Mobject清理 | `FadeOut(var)` |
+
+### 后期处理管线
+
+```bash
+# 1. 渲染（manim-voiceover自动生成SRT）
+manim -pqh scene.py SceneName
+
+# 2. 烧录字幕（先字幕再加速）
+ffmpeg -i output.mp4 -vf "subtitles=output.srt:force_style='FontSize=18,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Alignment=2'" -c:a copy subtitled.mp4
+
+# 3. 1.3x加速（视频+音频同步）
+ffmpeg -i subtitled.mp4 -filter_complex "[0:v]setpts=PTS/1.3[v];[0:a]atempo=1.3[a]" -map "[v]" -map "[a]" final.mp4
+```
