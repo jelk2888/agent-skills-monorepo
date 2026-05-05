@@ -14,7 +14,7 @@ description: |
   调研、研究、深度讲解、文献、定理、实验。
   也适用于用户想要将数学/物理概念可视化为动画、创建教育视频、制作数学解释视频、
   生成公式推导动画、上传题目图片生成讲解视频、先调研再制作教学视频等场景。
-version: "2.6.0"
+version: "2.6.1"
 ---
 
 # Manim 物理/数学动画创作技能（3b1b 风格增强版）
@@ -1547,7 +1547,7 @@ class ResearchReport:
 
 ## 十八、默认视频生成规范（强制执行）
 
-> **v2.6.0 新增**：所有视频生成必须遵守以下规范，除非用户明确要求覆盖。
+> **v2.6.0 新增，v2.6.1 更新**：所有视频生成必须遵守以下规范，除非用户明确要求覆盖。
 > 这些规范确保视频质量、音画同步、图形规范和视觉一致性。
 
 ### 18.1 技术栈默认配置
@@ -1700,14 +1700,16 @@ self.play(FadeIn(step_text, shift=RIGHT * 0.3, run_time=0.7))
 | 不重叠标题 | 标题固定在 `to_edge(UP)` 或 `to_corner(UL)` |
 | 所有文字不重叠 | 用 `next_to` + `buff=0.3` 确保间距 |
 | 图形在标题和字幕之间 | 图形 y 范围：标题下方 ~ 字幕上方 |
+| 图形变形/延伸后不超出边界 | 详见 18.12 图形变形边界约束 |
 
 **布局模板**：
 ```python
 # 标题区（上方）
 title = Text("题目", font_size=36).to_edge(UP, buff=0.3)
 
-# 图形区（中间）
+# 图形区（中间）—— 变形/延伸后必须调用 clamp_figure 约束边界
 figure_group = VGroup(tri, dots, labels).move_to(ORIGIN)
+clamp_figure(figure_group, title_mob=title)
 
 # 公式区（右侧或下方）
 formulas = VGroup(step1, step2, result).arrange(
@@ -1808,6 +1810,8 @@ if intersection is not None:
     ├── 文字是否从上方开始排列？
     ├── 文字之间是否不重叠？
     ├── 图形是否在标题和字幕之间？
+    ├── 图形变形/延伸后是否超出边界？（详见18.12）
+    ├── 图形完整性是否保持？（未被裁剪或截断？）
     └── 所有mobject是否保存到变量？
 ```
 
@@ -1930,7 +1934,116 @@ def get_outward_direction(line, center=ORIGIN):
     return direction / norm
 ```
 
-### 18.11 默认规范速查表
+### 18.12 图形变形边界约束
+
+**图形变形或延伸后，必须严格遵守边界约束，同时保证图形完整性和有效性**：
+
+| 约束方向 | 边界 | 规则 |
+|---------|------|------|
+| **上方** | 主标题下沿 | 图形任何部分不得超出标题区域 |
+| **下方** | 字幕上沿 | 图形任何部分不得侵入字幕区域 |
+| **左右** | 屏幕边缘 | 图形不得超出可视画面（留0.3安全边距） |
+| **完整性** | — | 边界约束不能导致图形残缺或信息丢失 |
+
+**边界计算**：
+```python
+FRAME_WIDTH = 14.2    # Manim默认帧宽
+FRAME_HEIGHT = 8.0    # Manim默认帧高
+
+TITLE_BOTTOM = 3.0    # 标题区下沿（y坐标）
+SUBTITLE_TOP = -3.2   # 字幕区上沿（y坐标）
+SAFE_MARGIN = 0.3     # 左右安全边距
+
+FIGURE_Y_MIN = SUBTITLE_TOP + 0.2
+FIGURE_Y_MAX = TITLE_BOTTOM - 0.2
+FIGURE_X_MIN = -FRAME_WIDTH / 2 + SAFE_MARGIN
+FIGURE_X_MAX = FRAME_WIDTH / 2 - SAFE_MARGIN
+```
+
+**图形缩放与平移策略**（优先级从高到低）：
+
+```
+图形超出边界？
+├── 1. 整体缩放（优先）
+│   └── scale_down使图形完全落入安全区域
+│       └── 缩放后仍超出？→ 缩放到最大可容纳尺寸
+├── 2. 平移居中
+│   └── 将图形中心移到可用区域中心
+├── 3. 分区展示（图形过大时）
+│   └── 将图形拆分为多个局部视图，逐步展示
+└── 4. 禁止裁剪
+    └── 绝不通过裁剪来满足边界约束（会破坏完整性）
+```
+
+**工具函数**：
+```python
+def clamp_figure(figure_group, title_mob=None, subtitle_y=-3.2):
+    """
+    确保图形组在标题和字幕之间，左右不超出屏幕。
+    优先缩放，其次平移，绝不裁剪。
+    """
+    title_bottom = title_mob.get_bottom()[1] if title_mob else 3.0
+    fig_top = figure_group.get_top()[1]
+    fig_bottom = figure_group.get_bottom()[1]
+    fig_left = figure_group.get_left()[0]
+    fig_right = figure_group.get_right()[0]
+
+    safe_y_top = title_bottom - 0.2
+    safe_y_bottom = subtitle_y + 0.2
+    safe_x_left = -FRAME_WIDTH / 2 + 0.3
+    safe_x_right = FRAME_WIDTH / 2 - 0.3
+
+    y_overflow_top = max(0, fig_top - safe_y_top)
+    y_overflow_bottom = max(0, safe_y_bottom - fig_bottom)
+    x_overflow_left = max(0, safe_x_left - fig_left)
+    x_overflow_right = max(0, fig_right - safe_x_right)
+
+    max_y_overflow = max(y_overflow_top, y_overflow_bottom)
+    max_x_overflow = max(x_overflow_left, x_overflow_right)
+
+    if max_y_overflow > 0 or max_x_overflow > 0:
+        available_height = safe_y_top - safe_y_bottom
+        available_width = safe_x_right - safe_x_left
+        current_height = fig_top - fig_bottom
+        current_width = fig_right - fig_left
+
+        scale_y = available_height / current_height if current_height > 0 else 1
+        scale_x = available_width / current_width if current_width > 0 else 1
+        scale_factor = min(scale_y, scale_x, 1.0)
+
+        if scale_factor < 1.0:
+            figure_group.scale(scale_factor)
+
+    center_y = (safe_y_top + safe_y_bottom) / 2
+    center_x = 0
+    figure_group.move_to(np.array([center_x, center_y, 0]))
+```
+
+**使用示例**：
+```python
+# 构建图形后，立即约束边界
+tri = Polygon(A, B, C, color=WHITE)
+dots = VGroup(dot_A, dot_B, dot_C)
+labels = VGroup(label_A, label_B, label_C)
+figure_group = VGroup(tri, dots, labels)
+
+# 添加辅助线后，重新约束
+aux_line = DashedLine(A, extended_point, color=YELLOW_C)
+figure_group.add(aux_line)
+clamp_figure(figure_group, title_mob=title)
+
+# 变形后重新约束
+self.play(tri.animate.stretch(1.5, dim=0))
+clamp_figure(figure_group, title_mob=title)
+```
+
+**关键原则**：
+- **完整性优先**：宁可缩小图形，也不能让图形残缺
+- **有效性保证**：缩放后所有标注、角度、边长仍清晰可辨
+- **动态适应**：每次图形变形/延伸后都应重新检查边界
+- **禁止裁剪**：绝对不通过clip或截断来满足边界
+
+### 18.13 默认规范速查表
 
 | 规范 | 默认值 | 代码/命令 |
 |------|--------|----------|
@@ -1948,6 +2061,8 @@ def get_outward_direction(line, center=ORIGIN):
 | 边标注 | 在边的外部 | `next_to(line, outward_dir, buff=0.15)` |
 | 文字排列 | 从上方开始，不重叠 | `to_edge(UP)` + `next_to(prev, DOWN, buff=0.3)` |
 | 图形位置 | 标题和字幕之间 | `move_to(ORIGIN)` 或偏移 |
+| 图形边界约束 | 变形/延伸后不超出标题、字幕、屏幕 | `clamp_figure(group, title_mob)` |
+| 图形完整性 | 不裁剪，宁可缩小 | 缩放优先，禁止clip |
 | 后期加速 | 1.3x视频+音频 | `setpts=PTS/1.3` + `atempo=1.3` |
 | 加速顺序 | 先烧字幕再加速 | 字幕→加速 |
 | 交点计算 | 手动计算 | `line_intersection(p1, p2, p3, p4)` |
@@ -1963,4 +2078,5 @@ def get_outward_direction(line, center=ORIGIN):
 > v2.4.0: 新增图片讲解视频功能——从上传题目图片自动分析→题型识别→图形重建→讲解脚本→Manim代码生成；6大题型模板（几何/函数/积分/方程/向量/物理）；图片分析提示词模板；讲解专用配色方案
 > v2.5.0: 新增研究员模式——先调研再制作：网络调研相关文章/定理/实验/经典例题→信息提炼→脉络构建→深度教学视频；5维调研框架；ResearchReport结构化输出；调研报告模板；各学科调研策略
 > v2.6.0: 新增默认视频生成规范（强制执行）——ManimCommunity+manim-voiceover+EdgeTTS(zh-CN-YunyangNeural)；1080p60fps；动画对齐语音时长；SRT烧录字幕（字号=标题一半）；Mobject变量管理+FadeOut；文字向右淡入；辅助线虚线；关键元素3次闪烁/一般2次×0.25秒；边标注在外部；手动计算线段交点；图形-公式-讲解词一致性审查；后期1.3x同步加速（先字幕再加速）
+> v2.6.1: 新增图形变形边界约束（18.12）——图形变形/延伸后上下不超出主标题和字幕、左右不超出屏幕，保证图形完整性和有效性；clamp_figure工具函数；缩放优先策略（禁止裁剪）；一致性审查新增边界检查项
 > 保留了manim_my的领域覆盖（物理/数学/ML/范畴论）和工具链（渲染管线/环境检查）

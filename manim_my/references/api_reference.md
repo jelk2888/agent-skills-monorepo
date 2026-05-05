@@ -1095,7 +1095,7 @@ class ResearchReport:
 | 神经网络 | "backpropagation intuition" | 3b1b Neural Networks |
 | Transformer | "attention mechanism visualized" | Jay Alammar's blog |
 
-## 默认视频生成规范工具（v2.6.0）
+## 默认视频生成规范工具（v2.6.1）
 
 > 所有视频生成必须遵守的默认规范。详见 SKILL.md 十八、默认视频生成规范。
 
@@ -1162,6 +1162,62 @@ def get_outward_direction(line, center=ORIGIN):
 | 文字动画 | `FadeIn(text, shift=RIGHT * 0.3)` |
 | 辅助线 | `DashedLine(..., dash_length=0.15)` |
 | Mobject清理 | `FadeOut(var)` |
+
+### 图形变形边界约束
+
+```python
+FRAME_WIDTH = 14.2
+FRAME_HEIGHT = 8.0
+
+def clamp_figure(figure_group, title_mob=None, subtitle_y=-3.2):
+    """
+    确保图形组在标题和字幕之间，左右不超出屏幕。
+    优先缩放，其次平移，绝不裁剪。保证图形完整性和有效性。
+    """
+    title_bottom = title_mob.get_bottom()[1] if title_mob else 3.0
+    fig_top = figure_group.get_top()[1]
+    fig_bottom = figure_group.get_bottom()[1]
+    fig_left = figure_group.get_left()[0]
+    fig_right = figure_group.get_right()[0]
+
+    safe_y_top = title_bottom - 0.2
+    safe_y_bottom = subtitle_y + 0.2
+    safe_x_left = -FRAME_WIDTH / 2 + 0.3
+    safe_x_right = FRAME_WIDTH / 2 - 0.3
+
+    y_overflow_top = max(0, fig_top - safe_y_top)
+    y_overflow_bottom = max(0, safe_y_bottom - fig_bottom)
+    x_overflow_left = max(0, safe_x_left - fig_left)
+    x_overflow_right = max(0, fig_right - safe_x_right)
+
+    max_y_overflow = max(y_overflow_top, y_overflow_bottom)
+    max_x_overflow = max(x_overflow_left, x_overflow_right)
+
+    if max_y_overflow > 0 or max_x_overflow > 0:
+        available_height = safe_y_top - safe_y_bottom
+        available_width = safe_x_right - safe_x_left
+        current_height = fig_top - fig_bottom
+        current_width = fig_right - fig_left
+
+        scale_y = available_height / current_height if current_height > 0 else 1
+        scale_x = available_width / current_width if current_width > 0 else 1
+        scale_factor = min(scale_y, scale_x, 1.0)
+
+        if scale_factor < 1.0:
+            figure_group.scale(scale_factor)
+
+    center_y = (safe_y_top + safe_y_bottom) / 2
+    center_x = 0
+    figure_group.move_to(np.array([center_x, center_y, 0]))
+```
+
+| 约束方向 | 边界 | 安全边距 |
+|---------|------|---------|
+| 上方 | 标题下沿 - 0.2 | 标题与图形间距 |
+| 下方 | 字幕上沿 + 0.2 | 字幕与图形间距 |
+| 左右 | 屏幕边缘 ± 0.3 | 安全边距 |
+
+**关键原则**：完整性优先（宁可缩小不裁剪）、有效性保证（缩放后标注清晰）、动态适应（变形后重新约束）
 
 ### 后期处理管线
 
