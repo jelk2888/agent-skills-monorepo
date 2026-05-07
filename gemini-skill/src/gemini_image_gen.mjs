@@ -120,8 +120,11 @@ async function generateAndDownload(prompt, options = {}) {
       await sleep(500);
     }
     
-    // 确保是 Pro 模型
-    await ops.ensureModelPro();
+    // 使用快速模式（Flash）生成图片，速度更快
+    const currentModel = await ops.getCurrentModel();
+    if (currentModel.ok && currentModel.raw !== 'quick') {
+      await ops.switchToModel('quick');
+    }
     
     // 生成图片
     console.log('  生成中 (可能需要 60-120 秒)...');
@@ -136,7 +139,34 @@ async function generateAndDownload(prompt, options = {}) {
     
     console.log('✅ 图片生成成功');
     
-    // 等待下载
+    // 直接从 dataUrl 保存
+    let finalPath = null;
+    if (result.dataUrl) {
+      const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      if (outputDir) {
+        mkdirSync(outputDir, { recursive: true });
+        const destName = outputName || `image_${Date.now()}.png`;
+        finalPath = join(outputDir, destName);
+      } else {
+        mkdirSync(PICTURES_DIR, { recursive: true });
+        const destName = outputName || `gemini_${Date.now()}.png`;
+        finalPath = join(PICTURES_DIR, destName);
+      }
+      
+      writeFileSync(finalPath, buffer);
+      const fileSize = buffer.length;
+      console.log(`✅ 文件已保存: ${basename(finalPath)} (${(fileSize / 1024).toFixed(1)} KB)`);
+      
+      return {
+        success: true,
+        outputPath: finalPath,
+        fileSize
+      };
+    }
+    
+    // fallback: 等待下载
     console.log('  等待文件保存...');
     const savedFile = await waitForNewFile(originalFiles);
     
@@ -157,20 +187,20 @@ async function generateAndDownload(prompt, options = {}) {
     console.log(`✅ 文件已保存: ${basename(savedFile)} (${(fileSize / 1024).toFixed(1)} KB)`);
     
     // 复制到输出目录
-    let finalPath = savedFile;
+    let savedFinalPath = savedFile;
     if (outputDir) {
       mkdirSync(outputDir, { recursive: true });
       const destName = outputName || `${Date.now()}.png`;
       const destPath = join(outputDir, destName);
       copyFileSync(savedFile, destPath);
-      finalPath = destPath;
+      savedFinalPath = destPath;
       console.log(`✅ 已复制到: ${destPath}`);
     }
     
     return {
       success: true,
       originalPath: savedFile,
-      outputPath: finalPath,
+      outputPath: savedFinalPath,
       fileSize
     };
     

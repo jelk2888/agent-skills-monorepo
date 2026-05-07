@@ -1,7 +1,7 @@
 ---
 name: manim_my
 description: |
-  Manim 物理/数学动画创作技能（3b1b风格增强版，v2.8.0 全自动化版）。
+  Manim 物理/数学动画创作技能（3b1b风格增强版，v2.9.0 全自动化版）。
   使用 Manim（ManimCommunity 社区版）+ manim-voiceover + EdgeTTS 生成高质量教学视频。
 
   【全自动触发】当用户说以下任一指令时，自动执行完整流程：
@@ -20,16 +20,16 @@ description: |
   触发词：做视频、生成视频、教学视频、讲解视频、数学动画、物理动画、
   manim、3b1b风格、教学动画、公式动画、题目讲解、图片讲解、解题视频、
   调研、研究、深度讲解、文献、定理、实验。
-version: "2.8.0"
+version: "3.0.0"
 ---
 
-# Manim 物理/数学动画创作技能（3b1b 风格增强版，v2.8.0 全自动化）
+# Manim 物理/数学动画创作技能（3b1b 风格增强版，v3.0.0 全自动化）
 
 > **「我不是在教数学，我是在分享我自己理解数学时的兴奋。」** —— Grant Sanderson (3Blue1Brown)
 
 > **核心理念**: 动画的唯一目的是帮助理解。如果一段运动不能服务于理解，它就不该存在。
 
-> **v2.8.0 核心升级**: **全自动触发** — 用户只需说"做一个XXXX的教学视频"，自动完成：调研→提示词→代码→渲染→后期。
+> **v3.0.0 核心升级**: **几何坐标精确计算规范** + **图文分离布局规范** — 新增第二十一章，强制规范几何图形的坐标计算（中点公式/延长线公式/屏幕边界验证）和图文分离布局（图形左移+文字右置+字号控制），杜绝图形画错和文字遮挡图形的问题。
 
 你是一个专业的 Manim 动画工程师 + 自动化视频制作人。你的核心能力是：
 
@@ -2208,6 +2208,482 @@ clamp_figure(figure_group, title_mob=title)
 | 加速顺序 | 先烧字幕再加速 | 字幕→加速 |
 | 交点计算 | 手动计算 | `line_intersection(p1, p2, p3, p4)` |
 | 一致性审查 | 图形-公式-讲解词 | 生成后自动检查 |
+| 中点计算 | 必须用公式 | `D = (B + C) / 2` |
+| 延长线计算 | 必须用公式 | `E = D + (D - A)` |
+| 屏幕边界验证 | 所有点在可视区域内 | `assert abs(x)<6.8 and abs(y)<3.7` |
+| 图文分离布局 | 图形左移+文字右置 | `fig_shift=LEFT*1.8` + `text_x=3.2` |
+| 图文并排字号 | 条件22px/标签28px | `font_size=22` / `font_size=28` |
+
+---
+
+## 二十、用户补充技术规范（v2.9.0 新增）
+
+> 以下规范由用户在 2026-05-06 补充，作为默认要求强制执行。
+
+### 20.1 技术栈
+
+```python
+from manim import *
+from manim_voiceover import VoiceoverScene
+from manim_voiceover.services.edge_tts import EdgeTTSService
+
+class StandardScene(VoiceoverScene):
+    def construct(self):
+        self.set_speech_service(EdgeTTSService(
+            voice="zh-CN-YunyangNeural"
+        ))
+```
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| Manim版本 | ManimCommunity | `from manim import *` |
+| 语音引擎 | manim-voiceover + EdgeTTS | 中文男声 zh-CN-YunyangNeural |
+| 中文字体 | Microsoft YaHei | 优先使用系统中文字体 |
+| 分辨率 | 1920×1080 | 1080p |
+| 帧率 | 60fps | 高质量输出 |
+| 背景色 | #1e1e2e | 深色背景 |
+
+### 20.2 渲染规格
+
+```bash
+manim -pqh scene.py SceneName    # 1080p 60fps 高质量
+```
+
+### 20.3 动画规范
+
+1. **动画时长对齐语音**：`run_time=tracker.duration`，确保动画不慢于讲解
+2. **只用SRT烧录字幕**：不在动画内画小字幕（无make_sub调用）
+3. **所有mobject保存到变量**：FadeOut淡出原始变量，避免动画残留
+4. **Transform后用原始变量名淡出**：不要FadeOut目标对象
+5. **文字向右淡入效果**：`FadeIn(text, shift=RIGHT * 0.3)`
+6. **辅助线/延长线用虚线**：`DashedLine(..., dash_length=0.15)`
+
+### 20.4 闪烁强调规范
+
+| 元素类型 | 定义 | 闪烁次数 | 每次时长 | 方法 |
+|---------|------|---------|---------|------|
+| **关键元素** | 角、边、全等结论等核心证明要素 | 3次 | 0.25秒 | `flash_key(mob)` |
+| **一般元素** | 直线、标签、三角形等辅助要素 | 2次 | 0.25秒 | `flash_normal(mob)` |
+
+### 20.5 图形规范
+
+- **手动计算线段交点**：ManimCommunity无get_intersection，用line_intersection()函数
+- **边标注在外部**：`next_to(line, outward_direction, buff=0.15)`
+- **图形变形边界约束**：变形/延伸后上下不超出主标题和字幕、左右不超出屏幕
+- **标题常驻显示**：主标题从第5秒左右一直显示在屏幕最上方隔一行居中位置
+- **子标题位置固定**：所有场景子标题统一放在主标题下方一行（`move_to(ORIGIN + UP * 2.25)`）
+- **所有文字不重叠**：主标题、子标题、图形、公式分层排列
+
+### 20.6 "图形-公式-讲解词"一致性审查
+
+- ✅ 图形是否符合题意？标注是否完整？
+- ✅ 公式是否与图形对应？推导是否正确？
+- ✅ 讲解词是否与动画同步？说的和写的是否一致？
+
+### 20.7 后期处理管线（按顺序执行）
+
+1. 先渲染：`manim -qh scene.py SceneName`
+2. **先烧字幕再加速**（保持音画同步）：
+   - Step 1: 用原始SRT烧录到原速视频（ffmpeg subtitles filter）
+   - Step 2: 整体1.3倍速加速（setpts=PTS/1.3 + atempo=1.3）
+   - 字幕作为视频画面的一部分，与视频音频一起被同步加速
+
+### 20.8 内容结构参考
+
+**场景规划**：
+1. **开场/定义** — 核心概念引入（带临时大标题，显示后FadeOut）
+2. **性质一** — 第一个核心性质（图形+公式+讲解）
+3. **性质二** — 第二个核心性质（图形+公式+讲解）
+4. **应用/拓展** — 实际应用或相关概念
+5. **操作演示** — 具体步骤展示（如尺规作图）
+6. **总结** — 要点回顾（列表形式）+ 结尾金句
+
+**配色方案**：
+```python
+INPUT_C = BLUE_C        # 输入量/初始状态
+OUTPUT_C = TEAL_C       # 输出量/变换结果
+ACCENT_C = RED_C        # 强调/重点/角平分线
+TRANSFORM_C = PURPLE_C  # 变换操作/垂线/辅助线
+HIGHLIGHT_C = GOLD_C   # 特殊常数/重要发现/主标题
+TEXT_C = WHITE          # 所有文本
+```
+
+### 20.9 必须包含的工具函数
+
+```python
+# 1. 线段交点计算
+def line_intersection(p1, p2, p3, p4): ...
+
+# 2. 图形边界约束
+def clamp_figure(figure_group, title_mob=None, subtitle_y=-3.2): ...
+
+# 3. 闪烁强调方法
+def flash_key(self, mob, color=YELLOW_C): ...      # 3次×0.25s
+def flash_normal(self, mob, color=YELLOW_C): ...  # 2次×0.25s
+```
+
+### 20.10 输出要求
+
+1. 完整Python代码文件（`{主题}.py`）
+2. EdgeTTS服务封装（`edge_tts_service.py`）
+3. 后处理脚本（`postprocess_v7.py`）
+4. 最终MP4视频（1080p60fps，约130秒，含SRT字幕）
+
+---
+
+## 二十一、几何坐标精确计算规范 + 图文分离布局规范（v3.0.0 新增，强制执行）
+
+> **v3.0.0 核心升级**：基于倍长中线视频制作中的实际教训，新增两条强制规范。
+> **问题根源**：①几何图形坐标手工硬编码导致中点/延长线位置错误；②图形与文字在同一区域导致文字遮挡图形。
+> **解决方案**：①所有派生点必须用公式计算，禁止手工估算；②图形左移+文字右置的图文分离布局。
+
+### 21.1 几何坐标精确计算规范（杜绝图形画错）
+
+**核心原则：所有派生点必须用数学公式计算，绝对禁止手工硬编码坐标！**
+
+#### 21.1.1 中点计算
+
+```python
+# ✅ 正确：用公式计算中点
+D = (B + C) / 2
+
+# ❌ 错误：手工硬编码中点坐标
+D = LEFT * 3.5 + UP * 0    # 可能不是BC的中点！
+D = ORIGIN + DOWN * 1.5     # 完全错误！
+```
+
+**验证规则**：生成代码后，必须验证 `|BD| == |CD|`：
+```python
+assert np.isclose(np.linalg.norm(D - B), np.linalg.norm(D - C)), "D不是BC的中点！"
+```
+
+#### 21.1.2 延长线计算
+
+```python
+# ✅ 正确：E在AD延长线上，且DE=AD
+E = D + (D - A)    # 向量DE = 向量DA，所以DE=AD且E在AD延长线上
+
+# ❌ 错误：手工硬编码E的坐标
+E = RIGHT * 3.5 + UP * 0    # E可能不在AD延长线上！
+E = DOWN * 1.5 + RIGHT * 1.5  # 完全错误！
+```
+
+**验证规则**：生成代码后，必须验证：
+```python
+assert np.isclose(np.linalg.norm(E - D), np.linalg.norm(D - A)), "DE ≠ AD！"
+assert np.isclose(np.linalg.norm(np.cross(E - D, D - A)), 0), "E不在AD延长线上！"
+```
+
+#### 21.1.3 屏幕边界验证
+
+**所有点必须在Manim可视区域内**（帧宽14.2，帧高8.0）：
+
+```python
+FRAME_HALF_W = 7.1
+FRAME_HALF_H = 4.0
+
+def verify_in_screen(point, label=""):
+    x, y = point[0], point[1]
+    assert abs(x) < FRAME_HALF_W - 0.3, f"{label}的x坐标{x:.2f}超出屏幕！"
+    assert abs(y) < FRAME_HALF_H - 0.3, f"{label}的y坐标{y:.2f}超出屏幕！"
+
+# 对所有关键点验证
+for name, pt in [("A", A), ("B", B), ("C", C), ("D", D), ("E", E)]:
+    verify_in_screen(pt, name)
+```
+
+**E点超出屏幕的常见原因**：三角形位置太低，导致AD向下延伸时E点y坐标超出-4.0。
+
+**解决方案**：将三角形整体上移，使E点在屏幕内：
+```python
+# ✅ 正确：BC放在y=0.5附近，A在上方，E在y≈-1.5（屏幕内）
+A = LEFT * 1 + UP * 2.5
+B = LEFT * 3.5 + UP * 0.5
+C = RIGHT * 2 + UP * 0.5
+D = (B + C) / 2
+E = D + (D - A)    # E ≈ (-0.5, -1.5)，在屏幕内 ✓
+
+# ❌ 错误：BC放在y=-1.5附近，E点y坐标≈-5.0（超出屏幕！）
+A = LEFT * 1.5 + UP * 1.5
+B = LEFT * 3.5 + DOWN * 1.2
+C = RIGHT * 3.5 + DOWN * 1.2
+D = (B + C) / 2
+E = D + (D - A)    # E ≈ (1.0, -5.0)，超出屏幕！
+```
+
+#### 21.1.4 全等三角形验证
+
+**当动画涉及全等三角形时，必须验证SAS条件**：
+
+```python
+# 验证△ADC ≅ △EDB（SAS）
+vec_DA = A - D
+vec_DC = C - D
+vec_DE = E - D
+vec_DB = B - D
+
+# 条件1：AD = DE（作图保证）
+assert np.isclose(np.linalg.norm(D - A), np.linalg.norm(E - D))
+
+# 条件2：DC = DB（D是BC中点保证）
+assert np.isclose(np.linalg.norm(C - D), np.linalg.norm(B - D))
+
+# 条件3：∠ADC = ∠EDB（对顶角）
+angle_ADC = np.arccos(np.dot(vec_DA, vec_DC) / (np.linalg.norm(vec_DA) * np.linalg.norm(vec_DC)))
+angle_EDB = np.arccos(np.dot(vec_DE, vec_DB) / (np.linalg.norm(vec_DE) * np.linalg.norm(vec_DB)))
+assert np.isclose(angle_ADC, angle_EDB, atol=0.01), "对顶角不等！"
+
+# 验证对应边相等
+assert np.isclose(np.linalg.norm(C - A), np.linalg.norm(E - B)), "AC ≠ BE，全等不成立！"
+```
+
+#### 21.1.5 坐标计算规则速查
+
+| 几何关系 | 计算公式 | 禁止 |
+|---------|---------|------|
+| 中点 | `D = (B + C) / 2` | 手工硬编码D坐标 |
+| 延长线（等长） | `E = D + (D - A)` | 手工硬编码E坐标 |
+| 延长线（任意比例） | `E = D + k * (D - A)` | 手工估算E位置 |
+| 对称点 | `E = 2*D - A` | 同上 |
+| 分点 | `P = (1-t)*A + t*B` | 手工估算P位置 |
+| 垂足 | 向量投影公式计算 | 手工估算垂足位置 |
+
+### 21.2 图文分离布局规范（杜绝文字遮挡图形）
+
+**核心原则：图形和文字分区放置，互不干扰！**
+
+#### 21.2.1 标准布局模式
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    标题区 (y > 2.8)                    │
+├────────────────────────┬─────────────────────────────┤
+│                        │                               │
+│   图形区               │   文字区                      │
+│   (左移1.5-2.0)        │   (x ≈ 3.0-3.5)             │
+│   x ∈ [-6.8, 1.5]     │   x ∈ [2.0, 6.8]            │
+│                        │                               │
+│   三角形/圆/线段        │   条件1: AD = DE             │
+│   角度标注              │   条件2: BD = CD             │
+│   点标签                │   条件3: ∠ADC = ∠EDB        │
+│   辅助线                │   结论: AC = BE              │
+│                        │   推导步骤                    │
+│                        │                               │
+├────────────────────────┴─────────────────────────────┤
+│                    字幕区 (y < -3.2)                    │
+└──────────────────────────────────────────────────────┘
+```
+
+#### 21.2.2 图形区偏移
+
+**当图形与文字同时显示时，图形必须左移**：
+
+```python
+fig_shift = LEFT * 1.8
+
+A = LEFT * 1 + UP * 2.5 + fig_shift
+B = LEFT * 3.5 + UP * 0.5 + fig_shift
+C = RIGHT * 2 + UP * 0.5 + fig_shift
+D = (B + C) / 2
+E = D + (D - A)
+```
+
+**偏移量选择**：
+| 文字区宽度 | 图形偏移量 | 文字区x坐标 |
+|-----------|-----------|------------|
+| 窄（1-2条短文字） | LEFT * 1.0 | 3.5 |
+| 中（3-4条条件/结论） | LEFT * 1.5 | 3.2 |
+| 宽（5+条或长公式） | LEFT * 2.0 | 3.0 |
+
+#### 21.2.3 文字区字号控制
+
+**文字放在图形右侧时，字号必须缩小以避免溢出**：
+
+| 内容类型 | 独占全屏字号 | 图文并排字号 | 说明 |
+|---------|------------|------------|------|
+| 章节标题 | 40 | 36 | 标题仍可稍大 |
+| 条件/性质文字 | 28-32 | 20-22 | 显著缩小 |
+| 数学公式 | 28 | 22 | MathTex缩小 |
+| 点标签 | 32 | 26-28 | 图上标注缩小 |
+| 角度标注 | 24 | 18-20 | 角度值缩小 |
+| 结论/总结 | 26 | 20-22 | 结论文字缩小 |
+
+**文字区定位方式**：
+
+```python
+text_x = 3.2
+
+# 条件文字从上到下排列
+cond1 = MathTex(r"AD = DE", font_size=22).move_to(RIGHT * text_x + UP * 2.5)
+cond2 = MathTex(r"BD = CD", font_size=22).move_to(RIGHT * text_x + UP * 1.5)
+cond3 = MathTex(r"\angle ADC = \angle EDB", font_size=22).move_to(RIGHT * text_x + UP * 0.5)
+conclusion = Text("全等 → AC = BE", font_size=22).move_to(RIGHT * text_x + DOWN * 1.0)
+```
+
+#### 21.2.4 禁止的布局模式
+
+```python
+# ❌ 错误：文字放在图形线段上（遮挡图形）
+bd_label = MathTex(r"BD = CD", font_size=26).next_to(Line(B, D), DOWN, buff=0.2)
+
+# ✅ 正确：文字放在右侧空白区
+bd_label = MathTex(r"BD = CD", font_size=22).move_to(RIGHT * text_x + UP * 1.5)
+
+# ❌ 错误：文字放在图形下方（与字幕区重叠）
+conclusion = Text("全等 → AC = BE", font_size=26).to_edge(DOWN, buff=0.8)
+
+# ✅ 正确：文字放在右侧空白区
+conclusion = Text("全等 → AC = BE", font_size=22).move_to(RIGHT * text_x + DOWN * 1.0)
+
+# ❌ 错误：文字散落在图形周围各处
+angle_text = MathTex(r"\angle ADC = \angle EDB").next_to(statement, DOWN).to_edge(RIGHT)
+
+# ✅ 正确：文字统一排列在右侧
+angle_text = MathTex(r"\angle ADC = \angle EDB", font_size=22).move_to(RIGHT * text_x + UP * 0.5)
+```
+
+#### 21.2.5 不同场景的布局策略
+
+| 场景类型 | 图形位置 | 文字位置 | 说明 |
+|---------|---------|---------|------|
+| 纯图形展示（无文字） | 居中 | — | 图形可占满中间区域 |
+| 图形+少量标注 | 居中偏左 | 标注紧贴图形 | 标注在外侧，不遮挡 |
+| 图形+条件/结论 | 左移1.5-2.0 | 右侧(x=3.0-3.5) | **图文分离，最常用** |
+| 纯文字/公式 | — | 居中 | 无图形时文字可居中 |
+| 图形+推导步骤 | 左移1.5-2.0 | 右侧，步骤从上到下 | 步骤用小字号排列 |
+
+### 21.3 一致性审查新增检查项
+
+在原有18.9审查清单基础上，新增以下强制检查项：
+
+```
+审查清单（v3.0.0 新增）：
+├── 坐标计算审查
+│   ├── 所有中点是否用公式计算？（D = (B+C)/2）
+│   ├── 所有延长线点是否用公式计算？（E = D + (D-A)）
+│   ├── 所有派生点是否在屏幕内？（|x| < 6.8, |y| < 3.7）
+│   └── 全等三角形SAS条件是否数值验证通过？
+├── 图文布局审查
+│   ├── 图形和文字是否分区放置？（图形左移+文字右置）
+│   ├── 文字是否遮挡图形关键元素？
+│   ├── 图文并排时字号是否缩小？（条件22px，标签28px）
+│   └── 文字区是否对齐排列？（同一x坐标，从上到下）
+└── 屏幕边界审查
+    ├── 所有点（含派生点）是否在可视区域内？
+    ├── 图形变形/延伸后是否仍完全可见？
+    └── 标签是否超出屏幕边缘？
+```
+
+### 21.4 完整代码示例（含坐标验证和图文分离）
+
+```python
+from manim import *
+from manim_voiceover import VoiceoverScene
+from manim_voiceover.services.edge_tts import EdgeTTSService
+
+class GeometryExample(VoiceoverScene):
+    def construct(self):
+        self.set_speech_service(EdgeTTSService(voice="zh-CN-YunyangNeural"))
+
+        # ===== 坐标计算（用公式，禁止硬编码）=====
+        fig_shift = LEFT * 1.8
+        A = LEFT * 1 + UP * 2.5 + fig_shift
+        B = LEFT * 3.5 + UP * 0.5 + fig_shift
+        C = RIGHT * 2 + UP * 0.5 + fig_shift
+        D = (B + C) / 2           # ✅ 中点用公式
+        E = D + (D - A)           # ✅ 延长线用公式
+
+        # ===== 坐标验证（生成后自动检查）=====
+        assert np.isclose(np.linalg.norm(D-B), np.linalg.norm(D-C)), "D不是BC中点！"
+        assert np.isclose(np.linalg.norm(E-D), np.linalg.norm(D-A)), "DE≠AD！"
+        for name, pt in [("A",A),("B",B),("C",C),("D",D),("E",E)]:
+            assert abs(pt[0]) < 6.8 and abs(pt[1]) < 3.7, f"{name}超出屏幕！"
+
+        # ===== 图形区（左移后）=====
+        triangle = Polygon(A, B, C, color=Colors3B1B.FIGURE)
+        median = Line(A, D, color=Colors3B1B.INPUT, stroke_width=4)
+        extended = Line(D, E, color=Colors3B1B.ACCENT, stroke_width=4)
+        line_BE = Line(B, E, color=Colors3B1B.OUTPUT, stroke_width=3)
+
+        dot_A = Dot(A, radius=0.08, color=Colors3B1B.HIGHLIGHT)
+        dot_B = Dot(B, radius=0.08, color=Colors3B1B.HIGHLIGHT)
+        dot_C = Dot(C, radius=0.08, color=Colors3B1B.HIGHLIGHT)
+        dot_D = Dot(D, radius=0.08, color=Colors3B1B.HIGHLIGHT)
+        dot_E = Dot(E, radius=0.08, color=Colors3B1B.HIGHLIGHT)
+
+        # 标签字号缩小（图文并排时28px）
+        label_A = MathTex("A", font_size=28).next_to(dot_A, UP, buff=0.12)
+        label_B = MathTex("B", font_size=28).next_to(dot_B, LEFT, buff=0.12)
+        label_C = MathTex("C", font_size=28).next_to(dot_C, RIGHT, buff=0.12)
+        label_D = MathTex("D", font_size=28).next_to(dot_D, UP, buff=0.12)
+        label_E = MathTex("E", font_size=28).next_to(dot_E, DOWN, buff=0.12)
+
+        # ===== 文字区（右侧空白区）=====
+        text_x = 3.2
+
+        cond1 = MathTex(r"AD = DE", font_size=22, color=Colors3B1B.INPUT)
+        cond1.move_to(RIGHT * text_x + UP * 2.5)
+
+        cond2 = MathTex(r"BD = CD", font_size=22, color=Colors3B1B.ANGLE)
+        cond2.move_to(RIGHT * text_x + UP * 1.5)
+
+        cond3 = MathTex(r"\angle ADC = \angle EDB", font_size=22, color=Colors3B1B.ANGLE)
+        cond3.move_to(RIGHT * text_x + UP * 0.5)
+
+        conclusion = Text("全等 → AC = BE", font_size=22, color=Colors3B1B.DERIVED)
+        conclusion.move_to(RIGHT * text_x + DOWN * 1.0)
+
+        # ===== 动画序列 =====
+        with self.voiceover(text="看这个三角形ABC，D是BC的中点") as tracker:
+            self.play(Create(triangle), run_time=tracker.duration)
+            self.add(dot_A, dot_B, dot_C, dot_D, label_A, label_B, label_C, label_D)
+
+        with self.voiceover(text="延长AD至E，使DE等于AD") as tracker:
+            self.play(Create(median), Create(extended), run_time=tracker.duration)
+            self.add(dot_E, label_E)
+
+        with self.voiceover(text="第一个条件：AD等于DE") as tracker:
+            self.play(FadeIn(cond1, shift=RIGHT * 0.2), run_time=tracker.duration)
+        self.flash_key(cond1)
+
+        with self.voiceover(text="第二个条件：BD等于CD") as tracker:
+            self.play(FadeIn(cond2, shift=RIGHT * 0.2), run_time=tracker.duration)
+        self.flash_key(cond2)
+
+        with self.voiceover(text="第三个条件：对顶角相等") as tracker:
+            self.play(FadeIn(cond3, shift=RIGHT * 0.2), run_time=tracker.duration)
+        self.flash_key(cond3)
+
+        with self.voiceover(text="因此三角形全等，AC等于BE") as tracker:
+            self.play(FadeIn(conclusion, shift=RIGHT * 0.2), run_time=tracker.duration)
+        self.flash_key(conclusion)
+
+        self.wait(2)
+
+    def flash_key(self, mob, color=YELLOW_C):
+        for _ in range(3):
+            self.play(Indicate(mob, color=color, scale_factor=1.2), run_time=0.25)
+
+    def flash_normal(self, mob, color=YELLOW_C):
+        for _ in range(2):
+            self.play(Indicate(mob, color=color, scale_factor=1.15), run_time=0.25)
+```
+
+### 21.5 规范速查表（v3.0.0 新增项）
+
+| 规范 | 规则 | 代码/验证 |
+|------|------|----------|
+| 中点计算 | 必须用公式 | `D = (B + C) / 2` |
+| 延长线计算 | 必须用公式 | `E = D + (D - A)` |
+| 屏幕边界验证 | 所有点在可视区域内 | `assert abs(x)<6.8 and abs(y)<3.7` |
+| 全等三角形验证 | SAS条件数值验证 | `assert np.isclose(...)` |
+| 图形位置 | 图文并排时左移1.5-2.0 | `fig_shift = LEFT * 1.8` |
+| 文字位置 | 图文并排时右侧空白区 | `text_x = 3.2` |
+| 条件文字字号 | 图文并排时22px | `font_size=22` |
+| 点标签字号 | 图文并排时28px | `font_size=28` |
+| 文字排列 | 同一x坐标，从上到下 | `move_to(RIGHT * text_x + UP * n)` |
+| 禁止文字放图形线段上 | 条件/结论放右侧 | 不用 `next_to(Line(...))` |
+| 禁止文字放图形下方 | 避免与字幕区重叠 | 不用 `to_edge(DOWN)` |
 
 ---
 
@@ -2222,6 +2698,8 @@ clamp_figure(figure_group, title_mob=title)
 > v2.6.1: 新增图形变形边界约束（18.12）——图形变形/延伸后上下不超出主标题和字幕、左右不超出屏幕，保证图形完整性和有效性；clamp_figure工具函数；缩放优先策略（禁止裁剪）；一致性审查新增边界检查项
 > v2.7.0: 基于业界最佳实践重构提示词模板——综合ManimTrainer(SFT+GRPO)/GenAI_MANIM(3阶段IR)/Code2Video(3Agent)/Buildbleu(并行RAG)/Claude Best Practices/CSDN提示词指南/AI视频SCALS框架；新增SCALS扩展框架、5阶段工作流、5维质量评估、10个反模式
 > v2.8.0: 全自动化升级——用户只需说"做一个XXXX教学视频"自动触发完整流程：研究员模式(网络调研→信息提炼)→提示词模板生成(SCALS扩展→场景规划→技术规范)→视频制作(代码生成→渲染1080p60→SRT烧录→1.3x加速)；新增全自动触发条件检测（4种正则匹配模式）、3阶段零人工干预工作流图、决策规则树、默认参数表；支持全自动/手动双模式切换
+> v2.9.0: 用户补充技术规范——新增第二十章，详细规范技术栈/渲染规格/动画规范/闪烁强调/图形规范/一致性审查/后期处理管线/输出要求；中文字体默认使用Microsoft YaHei；EdgeTTS服务封装和后处理脚本作为标准输出
+> v3.0.0: 几何坐标精确计算规范+图文分离布局规范——新增第二十一章（强制执行）；基于倍长中线视频制作教训：①所有派生点（中点/延长线/对称点）必须用公式计算，禁止手工硬编码坐标；②屏幕边界验证（所有点必须在可视区域内）；③全等三角形SAS条件数值验证；④图文分离布局（图形左移1.5-2.0+文字右置x=3.0-3.5+字号缩小）；⑤禁止文字放图形线段上或图形下方；⑥一致性审查新增坐标计算审查和图文布局审查
 
 ---
 
@@ -2477,3 +2955,10 @@ def flash_normal(self, mob, color=YELLOW_C):    # 一般元素: 2次×0.25s
 | 一个Scene塞入所有内容 | 多Scene拆分（每个Scene<30秒） | Code2Video Planner |
 | 不做一致性审查 | 图形-公式-讲解词三合一审查 | Critic模式 |
 | 手动调整音画同步 | run_time=tracker.duration自动对齐 | manim-voiceover官方推荐 |
+| **手工硬编码中点坐标** | **D = (B + C) / 2 公式计算** | **v3.0.0 倍长中线教训** |
+| **手工硬编码延长线点坐标** | **E = D + (D - A) 公式计算** | **v3.0.0 倍长中线教训** |
+| **不验证派生点是否在屏幕内** | **assert abs(x)<6.8 and abs(y)<3.7** | **v3.0.0 倍长中线教训** |
+| **文字放在图形线段上** | **文字放右侧空白区(text_x=3.2)** | **v3.0.0 倍长中线教训** |
+| **文字放在图形下方** | **避免与字幕区重叠，放右侧** | **v3.0.0 倍长中线教训** |
+| **图文并排时字号不缩小** | **条件22px，标签28px** | **v3.0.0 倍长中线教训** |
+| **图形居中时文字遮挡图形** | **图形左移1.5-2.0 + 文字右置** | **v3.0.0 倍长中线教训** |
