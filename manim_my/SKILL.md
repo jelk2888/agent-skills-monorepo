@@ -1,7 +1,7 @@
 ---
 name: manim_my
 description: |
-  Manim 物理/数学动画创作技能（3b1b风格增强版，v2.9.0 全自动化版）。
+  Manim 物理/数学动画创作技能（3b1b风格增强版，v3.2.0 全自动化版 + 实战经验规则）。
   使用 Manim（ManimCommunity 社区版）+ manim-voiceover + EdgeTTS 生成高质量教学视频。
 
   【全自动触发】当用户说以下任一指令时，自动执行完整流程：
@@ -15,21 +15,23 @@ description: |
   2. 提示词生成：SCALS框架扩展 → 场景规划 → 技术规范填充
   3. 视频制作：Manim代码生成 → 渲染(1080p60) → 字幕烧录 → 1.3x加速
 
-  内置3b1b标准色彩系统、5大心智模型、完整SOP、隐喻库、质量检核、闪烁强调、边界约束。
+  内置3b1b标准色彩系统、5大心智模型、完整SOP、隐喻库、质量检核、闪烁强调、边界约束、图文分离、文字左对齐。
 
   触发词：做视频、生成视频、教学视频、讲解视频、数学动画、物理动画、
   manim、3b1b风格、教学动画、公式动画、题目讲解、图片讲解、解题视频、
-  调研、研究、深度讲解、文献、定理、实验。
-version: "3.0.0"
+  调研、研究、深度讲解、文献、定理、实验、文字左对齐、左对齐。
+version: "3.2.0"
 ---
 
-# Manim 物理/数学动画创作技能（3b1b 风格增强版，v3.0.0 全自动化）
+# Manim 物理/数学动画创作技能（3b1b 风格增强版，v3.2.0 全自动化 + 实战经验）
 
 > **「我不是在教数学，我是在分享我自己理解数学时的兴奋。」** —— Grant Sanderson (3Blue1Brown)
 
-> **核心理念**: 动画的唯一目的是帮助理解。如果一段运动不能服务于理解，它就不该存在。
+> **核心理念**：动画的唯一目的是帮助理解。如果一段运动不能服务于理解，它就不该存在。
 
-> **v3.0.0 核心升级**: **几何坐标精确计算规范** + **图文分离布局规范** — 新增第二十一章，强制规范几何图形的坐标计算（中点公式/延长线公式/屏幕边界验证）和图文分离布局（图形左移+文字右置+字号控制），杜绝图形画错和文字遮挡图形的问题。
+> **v3.0.0 核心升级**：几何坐标精确计算规范 + 图文分离布局规范 — 新增第二十一章，强制规范几何图形的坐标计算（中点公式/延长线公式/屏幕边界验证）和图文分离布局（图形左移+文字右置+字号控制），杜绝图形画错和文字遮挡图形的问题。
+
+> **v3.1.0 核心升级**：文字左对齐布局规范 — 新增第二十二章，强制规范所有文字区域采用左对齐排列，替代之前的居中对齐，确保文字排列整齐美观，提升阅读体验。
 
 你是一个专业的 Manim 动画工程师 + 自动化视频制作人。你的核心能力是：
 
@@ -2681,13 +2683,226 @@ class GeometryExample(VoiceoverScene):
 | 文字位置 | 图文并排时右侧空白区 | `text_x = 3.2` |
 | 条件文字字号 | 图文并排时22px | `font_size=22` |
 | 点标签字号 | 图文并排时28px | `font_size=28` |
-| 文字排列 | 同一x坐标，从上到下 | `move_to(RIGHT * text_x + UP * n)` |
+| 文字排列 | 左对齐（v3.1.0） | `next_to(..., DOWN, aligned_edge=LEFT)` |
 | 禁止文字放图形线段上 | 条件/结论放右侧 | 不用 `next_to(Line(...))` |
 | 禁止文字放图形下方 | 避免与字幕区重叠 | 不用 `to_edge(DOWN)` |
 
 ---
 
-> 本Skill v2.7.0 由 manim_my + manim-math-animation + Manim Community 官方示例库 + 社区教程融合升级
+## 二十二、文字左对齐布局规范（v3.1.0 新增，强制执行）
+
+> **v3.1.0 核心升级**：基于对称全等模型视频制作中的实际反馈，新增文字左对齐规范。
+> **问题根源**：文字居中对齐时，不同长度的文字排列显得杂乱，不美观。
+> **解决方案**：所有文字区域采用左对齐排列，确保整齐美观。
+
+### 22.1 左对齐核心原则
+
+**核心原则：所有文字从左对齐排列，仅标题可居中！**
+
+#### 22.1.1 标准左对齐布局模式
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    主标题 (居中)                      │
+│  文字左对齐示例                                   │
+├────────────────────────┬─────────────────────────────┤
+│                        │  文字区 (左对齐)             │
+│   图形区               │  ▶ 子标题 (左对齐)           │
+│                        │  ▶ 第一个条件 (左对齐)       │
+│   三角形/圆/线段        │  ▶ 第二个条件 (左对齐)       │
+│   角度标注              │  ▶ 结论 (左对齐)             │
+│   点标签                │  ▶ 总结要点1 (左对齐)        │
+│   辅助线                │  ▶ 总结要点2 (左对齐)        │
+│                        │                             │
+├────────────────────────┴─────────────────────────────┤
+│                    字幕区                              │
+└──────────────────────────────────────────────────────┘
+```
+
+#### 22.1.2 左对齐定位方式
+
+```python
+# ✅ 正确：用 to_edge + next_to + aligned_edge=LEFT
+text_left = RIGHT * (text_x - 3.5)  # 文字左对齐基准位置
+
+# 子标题
+sub_title = Text("什么是对称全等？", font="Microsoft YaHei", font_size=36)
+sub_title.to_edge(UP, buff=0.3).shift(text_left)
+
+# 第一条文字
+def1 = Text("两个三角形沿某直线翻折后", font="Microsoft YaHei", font_size=22)
+def1.next_to(sub_title, DOWN, aligned_edge=LEFT, buff=0.6)
+
+# 第二条文字（左对齐）
+def2 = Text("能完全重合 → 对称全等", font="Microsoft YaHei", font_size=22)
+def2.next_to(def1, DOWN, aligned_edge=LEFT, buff=0.3)
+
+# 核心特征标题
+core_title = Text("核心特征：", font="Microsoft YaHei", font_size=24, color=ACCENT_C)
+core_title.next_to(def2, DOWN, aligned_edge=LEFT, buff=0.5)
+
+# 特征列表（左对齐）
+core1 = Text("① 公共边 BD（对称轴上）", font="Microsoft YaHei", font_size=22)
+core1.next_to(core_title, DOWN, aligned_edge=LEFT, buff=0.3)
+
+core2 = Text("② 对应点连线 AA' 垂直于对称轴", font="Microsoft YaHei", font_size=22)
+core2.next_to(core1, DOWN, aligned_edge=LEFT, buff=0.3)
+
+core3 = Text("③ 对称轴垂直平分 AA'", font="Microsoft YaHei", font_size=22)
+core3.next_to(core2, DOWN, aligned_edge=LEFT, buff=0.3)
+
+# ❌ 错误：用 move_to 居中对齐
+def1.move_to(RIGHT * text_x + UP * 2.5)  # 居中不对齐！
+def2.move_to(RIGHT * text_x + UP * 1.8)  # 居中不对齐！
+```
+
+#### 22.1.3 总结部分的左对齐
+
+```python
+# ✅ 正确：总结部分左对齐
+summary_title = Text("总结", font="Microsoft YaHei", font_size=36, color=HIGHLIGHT_C)
+summary_title.to_edge(UP, buff=1.2).shift(LEFT * 2.0)
+
+point1 = Text("1. 对称全等的两个三角形沿对称轴翻折后重合", font="Microsoft YaHei", font_size=22)
+point1.next_to(summary_title, DOWN, aligned_edge=LEFT, buff=0.6)
+
+point2 = Text("2. 对称轴是对应点连线的垂直平分线", font="Microsoft YaHei", font_size=22)
+point2.next_to(point1, DOWN, aligned_edge=LEFT, buff=0.4)
+
+point3 = Text("3. 对称轴是公共边所在的直线", font="Microsoft YaHei", font_size=22)
+point3.next_to(point2, DOWN, aligned_edge=LEFT, buff=0.4)
+
+point4 = Text("4. 翻折后对应顶点重合，对应边相等，对应角相等", font="Microsoft YaHei", font_size=22)
+point4.next_to(point3, DOWN, aligned_edge=LEFT, buff=0.4)
+```
+
+### 22.2 左对齐速查表
+
+| 场景 | 布局方式 | 代码模式 |
+|------|---------|---------|
+| 主标题 | 居中 | `title.to_edge(UP)` |
+| 子标题 | 左对齐 | `sub_title.to_edge(UP, buff=0.3).shift(text_left)` |
+| 条件文字 | 左对齐 | `cond.next_to(prev, DOWN, aligned_edge=LEFT, buff=0.3)` |
+| 结论文字 | 左对齐 | `conclusion.next_to(prev, DOWN, aligned_edge=LEFT, buff=0.3)` |
+| 总结列表 | 左对齐 | `point.next_to(prev, DOWN, aligned_edge=LEFT, buff=0.4)` |
+| 公式组 | 左对齐 | `formulas.arrange(DOWN, aligned_edge=LEFT, buff=0.3)` |
+
+### 22.3 一致性审查新增检查项（v3.1.0）
+
+```
+审查清单（v3.1.0 新增）：
+├── 文字对齐审查
+│   ├── 主标题是否居中？
+│   ├── 子标题是否左对齐？
+│   ├── 条件/结论是否左对齐？
+│   ├── 总结列表是否左对齐？
+│   ├── 是否使用 aligned_edge=LEFT？
+│   └── 是否避免使用 move_to 居中对齐？
+└── 文字间距审查
+    ├── 子标题与首条文字间距是否足够（buff=0.6）？
+    ├── 后续文字间距是否一致（buff=0.3-0.4）？
+    └── 标题与总结部分间距是否合理（buff=1.2）？
+```
+
+### 22.4 完整代码示例（含文字左对齐）
+
+```python
+from manim import *
+from manim_voiceover import VoiceoverScene
+from manim_voiceover.services.edge_tts import EdgeTTSService
+
+class LeftAlignExample(VoiceoverScene):
+    def construct(self):
+        self.set_speech_service(EdgeTTSService(voice="zh-CN-YunyangNeural"))
+
+        # ===== 图形区（左移）=====
+        fig_shift = LEFT * 1.8
+        A = LEFT * 1 + UP * 2.5 + fig_shift
+        B = LEFT * 3.5 + UP * 0.5 + fig_shift
+        C = RIGHT * 2 + UP * 0.5 + fig_shift
+
+        triangle = Polygon(A, B, C, color=WHITE)
+        dot_A = Dot(A, radius=0.06, color=GOLD_C)
+        dot_B = Dot(B, radius=0.06, color=GOLD_C)
+        dot_C = Dot(C, radius=0.06, color=GOLD_C)
+        label_A = MathTex("A", font_size=28).next_to(dot_A, UP, buff=0.12)
+        label_B = MathTex("B", font_size=28).next_to(dot_B, LEFT, buff=0.12)
+        label_C = MathTex("C", font_size=28).next_to(dot_C, RIGHT, buff=0.12)
+
+        # ===== 文字区（左对齐）=====
+        text_left = RIGHT * (3.2 - 3.5)  # 文字左对齐基准
+
+        # 子标题
+        sub_title = Text("什么是对称全等？", font="Microsoft YaHei", font_size=36)
+        sub_title.to_edge(UP, buff=0.3).shift(text_left)
+
+        # 定义文字（左对齐）
+        def1 = Text("两个三角形沿某直线翻折后", font="Microsoft YaHei", font_size=22)
+        def1.next_to(sub_title, DOWN, aligned_edge=LEFT, buff=0.6)
+
+        def2 = Text("能完全重合 → 对称全等", font="Microsoft YaHei", font_size=22)
+        def2.next_to(def1, DOWN, aligned_edge=LEFT, buff=0.3)
+
+        # 核心特征（左对齐）
+        core_title = Text("核心特征：", font="Microsoft YaHei", font_size=24, color=RED_C)
+        core_title.next_to(def2, DOWN, aligned_edge=LEFT, buff=0.5)
+
+        core1 = Text("① 公共边 BD（对称轴上）", font="Microsoft YaHei", font_size=22)
+        core1.next_to(core_title, DOWN, aligned_edge=LEFT, buff=0.3)
+
+        core2 = Text("② 对应点连线垂直于对称轴", font="Microsoft YaHei", font_size=22)
+        core2.next_to(core1, DOWN, aligned_edge=LEFT, buff=0.3)
+
+        core3 = Text("③ 对称轴垂直平分对应点连线", font="Microsoft YaHei", font_size=22)
+        core3.next_to(core2, DOWN, aligned_edge=LEFT, buff=0.3)
+
+        # ===== 动画序列 =====
+        with self.voiceover(text="我们来看什么是对称全等") as tracker:
+            self.play(Create(triangle), run_time=tracker.duration)
+            self.add(dot_A, dot_B, dot_C, label_A, label_B, label_C)
+
+        with self.voiceover(text="两个三角形沿某直线翻折后能完全重合") as tracker:
+            self.play(FadeIn(sub_title, shift=RIGHT*0.3), run_time=tracker.duration)
+            self.wait(0.3)
+            self.play(FadeIn(def1, shift=RIGHT*0.3), run_time=1)
+            self.wait(0.3)
+            self.play(FadeIn(def2, shift=RIGHT*0.3), run_time=1)
+
+        with self.voiceover(text="对称全等有三个核心特征") as tracker:
+            self.play(FadeIn(core_title, shift=RIGHT*0.3), run_time=tracker.duration)
+            self.wait(0.3)
+            self.play(FadeIn(core1, shift=RIGHT*0.3), run_time=1)
+            self.wait(0.3)
+            self.play(FadeIn(core2, shift=RIGHT*0.3), run_time=1)
+            self.wait(0.3)
+            self.play(FadeIn(core3, shift=RIGHT*0.3), run_time=1)
+
+        self.wait(2)
+
+    def flash_key(self, mob, color=YELLOW_C):
+        for _ in range(3):
+            self.play(Indicate(mob, color=color, scale_factor=1.2), run_time=0.25)
+
+    def flash_normal(self, mob, color=YELLOW_C):
+        for _ in range(2):
+            self.play(Indicate(mob, color=color, scale_factor=1.15), run_time=0.25)
+```
+
+### 22.5 规范速查表（v3.1.0 新增项）
+
+| 规范 | 规则 | 代码/说明 |
+|------|------|----------|
+| 主标题 | 居中 | `title.to_edge(UP)` |
+| 子标题 | 左对齐 | `sub_title.to_edge(UP, buff=0.3).shift(text_left)` |
+| 条件文字 | 左对齐 | `cond.next_to(prev, DOWN, aligned_edge=LEFT, buff=0.3)` |
+| 总结列表 | 左对齐 | `point.next_to(prev, DOWN, aligned_edge=LEFT, buff=0.4)` |
+| 文字间距 | 统一 | 子标题→首条0.6，后续0.3-0.4 |
+| 禁止 | 居中对齐 | 不用 `move_to(RIGHT*text_x + ...)` |
+| 推荐 | aligned_edge | 所有next_to都加 `aligned_edge=LEFT` |
+
+---
+
+> 本Skill v3.1.0 由 manim_my + manim-math-animation + Manim Community 官方示例库 + 社区教程融合升级，融合对称全等模型视频制作经验
 > v2.0.0: 融合了3b1b风格DNA、完整SOP、隐喻库、质量检核、降级策略
 > v2.1.0: 新增150+官方动画示例参考（创建/淡入/生长/指示/变换/文本/图论/表格/3D/特效/布尔运算）
 > v2.2.0: 新增流线动画/向量场/LaggedStart/网格非线性变换/复数映射/交互模式/中文字体处理/manim.cfg配置/uv安装/manim init项目初始化；更新安装指南（v0.19.0+不再需要外部FFmpeg）
@@ -2962,3 +3177,459 @@ def flash_normal(self, mob, color=YELLOW_C):    # 一般元素: 2次×0.25s
 | **文字放在图形下方** | **避免与字幕区重叠，放右侧** | **v3.0.0 倍长中线教训** |
 | **图文并排时字号不缩小** | **条件22px，标签28px** | **v3.0.0 倍长中线教训** |
 | **图形居中时文字遮挡图形** | **图形左移1.5-2.0 + 文字右置** | **v3.0.0 倍长中线教训** |
+| **静态图形用Create动画画图** | **self.add()直接出图，零延迟** | **v3.2.0 费马点实战教训** |
+| **P点游走后额外move_to(F)导致跳动** | **游走结束直接停住，不加move_to** | **v3.2.0 费马点实战教训** |
+| **P标签用.animate.next_to(dot_P)漂移** | **基于target重新计算get_center()** | **v3.2.0 费马点实战教训** |
+| **角度标签.next_to(ang, UR)方向猜测** | **_angle_label_pos()角平分线精确定位** | **v3.2.0 费马点实战教训** |
+| **钝角下Angle()方向不确定** | **手动Arc + arctan2计算极角范围** | **v3.2.0 费马点实战教训** |
+| **Angle/Line混用位置+关键字参数TypeError** | **全部使用关键字参数** | **v3.2.0 费马点实战教训** |
+| **列表先FadeIn再arrange导致重叠跳变** | **先arrange排列完成再逐行FadeIn** | **v3.2.0 费马点实战教训** |
+| **同一项目中P和P_F混用** | **选定命名后全局搜索确认一致** | **v3.2.0 费马点实战教训** |
+
+---
+
+## 二十三、实战经验规则（v3.2.0 新增，强制执行）
+
+> **v3.2.0 核心升级**：基于费马点教学视频12轮迭代修复的完整实战经验沉淀。
+> **来源项目**：费马点动画（fermat_point.py）— 从初版到最终版经历了12轮用户反馈→修复→渲染循环。
+> **问题类型**：几何精确性、动画同步性、API兼容性、命名一致性四大类共9个高频坑。
+
+### 23.1 出图策略 — 直接出图优先（最高优先级）
+
+> **教训来源**：Scene01 开场动画从6.5秒压缩到1.2秒，用户反馈"不要动画画图，直接展示"。
+
+#### 核心原则
+
+| 场景 | 正确做法 ✅ | 错误做法 ❌ |
+|------|------------|------------|
+| 静态图形首次出现 | `self.add(tri, dots, labels)` 一帧到位 | `self.play(Create(tri), FadeIn(dots))` 动画画图 |
+| 动画前的初始状态（P点+连线） | `self.add(dot_P, lbl_P, dist_lines)` 瞬间出现 | `self.play(FadeIn(dot_P), Create(lines))` 分步出现 |
+| 标题/副标题等说明文字 | `self.add(sub)` 或快速 FadeIn(<1s) | 长时间 Create/Write (>1.5s) |
+
+#### 完整代码模式
+
+```python
+# ✅ 正确：零前奏直接出图 + P立即开始移动
+class Scene01Opening(FermatScene):
+    def construct(self):
+        # 所有静态元素一次性add
+        shift = self.FIG_BASE
+        A = np.array([-2.2, 1.7, 0]) + shift
+        B = np.array([-3.8, -1.7, 0]) + shift
+        C = np.array([0.8, -1.7, 0]) + shift
+
+        tri = Polygon(A, B, C, color=ColorsFP.FIGURE_C, stroke_width=3)
+        dots_abc = VGroup(Dot(A,...), Dot(B,...), Dot(C,...))
+        labels_abc = VGroup(MathTex("A",...), MathTex("B",...), MathTex("C",...))
+
+        # P点和三条连线也直接出现
+        P_pos = wander_pts[0]
+        dot_P = Dot(P_pos, radius=0.08, color=ColorsFP.ACCENT_C)
+        lbl_P = MathTex("P", ...).next_to(dot_P, UR, buff=0.10)
+        line_PA = Line(P_pos, A, ...)
+        line_PB = Line(P_pos, B, ...)
+        line_PC = Line(P_pos, C, ...)
+        dist_lines = VGroup(line_PA, line_PB, line_PC)
+
+        # ★ 一帧到位出图（零延迟）
+        self.add(tri, dots_abc, labels_abc, dot_P, lbl_P, dist_lines)
+
+        # 标题文字在P移动期间同步淡入（不阻挡动画）
+        title, = self.make_title_pair("费马点")
+        self.play(FadeIn(title, shift=RIGHT * 0.3), run_time=1.2)
+
+        # P点开始移动...
+```
+
+**关键要点**：
+- 只有需要**动态展示过程**的内容才用 `self.play()` 动画
+- 静态元素一律 `self.add()` 直接出图，零帧延迟
+- 用户看到的第一帧就应该是完整的图形+文字
+
+### 23.2 点+连线同步移动动画（动点场景强制）
+
+> **教训来源**：P点移动时三条连线不同步跟随、标签漂移、游走结束后突然跳动。
+
+#### 完整代码模式（可直接复制）
+
+```python
+# ═══ Step 1: 生成闭合漫游路径 ═══
+F = compute_fermat_point(A, B, C)
+wander_pts = []
+n_steps = 60
+for i in range(n_steps + 1):
+    t = i / n_steps * TAU
+    px = 0.6 * np.sin(t) + 0.25 * np.sin(2.5 * t)
+    py = 0.45 * np.sin(1.8 * t + 0.6) + 0.15 * np.cos(3 * t)
+    pt = F + np.array([px, py, 0])
+    # 边界约束（保持在三角形内）
+    bary_center = (A + B + C) / 3
+    max_dist = 0.55
+    vec = pt - bary_center
+    if np.linalg.norm(vec[:2]) > max_dist:
+        pt = bary_center + vec * (max_dist / (np.linalg.norm(vec[:2]) + 1e-9))
+    wander_pts.append(pt)
+
+# ═══ Step 2: 初始状态直接 add（无动画）═══
+P_pos = wander_pts[0]
+dot_P = Dot(P_pos, radius=0.08, color=ColorsFP.ACCENT_C)
+lbl_P = MathTex("P", font_size=26, color=ColorsFP.ACCENT_C).next_to(dot_P, UR, buff=0.10)
+line_PA = Line(P_pos, A, color=ColorsFP.INPUT_C, stroke_width=2.5)
+line_PB = Line(P_pos, B, color=ColorsFP.INPUT_C, stroke_width=2.5)
+line_PC = Line(P_pos, C, color=ColorsFP.INPUT_C, stroke_width=2.5)
+dist_lines = VGroup(line_PA, line_PB, line_PC)
+
+self.add(dot_P, lbl_P, dist_lines)  # 直接出图
+
+# ═══ Step 3: 分段同步移动（P+三线+标签严格一致）═══
+n_segments = 15          # 更多分段 = 更流畅
+total_move_dur = 5.0
+segment_dur = total_move_dur / n_segments
+
+for i in range(1, min(n_segments + 1, len(wander_pts))):
+    target = wander_pts[i]
+    new_PA = Line(target, A, color=ColorsFP.INPUT_C, stroke_width=2.5)
+    new_PB = Line(target, B, color=ColorsFP.INPUT_C, stroke_width=2.5)
+    new_PC = Line(target, C, color=ColorsFP.INPUT_C, stroke_width=2.5)
+
+    # ★ 标签位置必须基于target重新计算！不能.animate.next_to(dot_P)
+    new_lbl_pos = MathTex("P", ...).next_to(
+        Dot(target, radius=0.08).get_center(), UR, buff=0.10
+    ).get_center()
+
+    self.play(
+        dot_P.animate.move_to(target),
+        Transform(line_PA, new_PA),
+        Transform(line_PB, new_PB),
+        Transform(line_PC, new_PC),
+        lbl_P.animate.move_to(new_lbl_pos),   # 基于target位置
+        run_time=segment_dur,
+    )
+
+# ═══ Step 4: ★ 游走结束直接停住，禁止额外move_to！═══
+self.flash_key(dot_P)
+# ❌ 不要这样：self.play(dot_P.animate.move_to(F)) 会导致突兀跳动！
+```
+
+#### 常见错误与修复
+
+| 错误现象 | 错误代码 | 修复方案 |
+|---------|---------|---------|
+| P标签漂移跟不上点 | `lbl_P.animate.next_to(dot_P, UR)` | 基于 target 计算 `new_lbl.get_center()` |
+| 游走结束后P突然跳到别处 | 游走结束后又执行 `dot_P.animate.move_to(F)` | 删除该行，`self.flash_key(dot_P)` 即可 |
+| 三条线更新滞后 | 只更新了dot_P位置没更新Line端点 | 每段都创建新 Line 并 Transform |
+| 移动不够流畅 | n_segments < 10 | 增加到 15+ 段 |
+
+### 23.3 角度标注精确性（几何准确性强制）
+
+> **教训来源**：三个120°标注跑到角的外部去了，用户明确反馈"标注位置不对"。
+
+#### 23.3.1 角度弧线的绘制
+
+```python
+# ✅ 锐角场景（<120°）：Angle() 即可工作正常
+ang_APB = Angle(Line(F, A), Line(F, B), radius=0.44,
+                 color=ColorsFP.ACCENT_C, stroke_width=3.0)
+
+# ❌ 钝角场景（>=120°）：Angle() 的 other_angle/quadrant 行为不确定！
+ang_A = Angle(Line(A, B), Line(A, C), ..., other_angle=True)  # 不可靠！
+
+# ✅ 钝角场景：手动 Arc + arctan2 计算极角范围
+vec_AB = (B - A)[:2]
+vec_AC = (C - A)[:2]
+angle_AB = np.arctan2(vec_AB[1], vec_AB[0])
+angle_AC = np.arctan2(vec_AC[1], vec_AC[0])
+
+diff = angle_AB - angle_AC
+if diff < 0:
+    diff += TAU
+if diff > PI:          # 优弧→翻转为劣弧
+    angle_AB, angle_AC = angle_AC, angle_AB
+    diff = TAU - diff
+
+ang_A = Arc(
+    radius=0.52,
+    start_angle=angle_AC,
+    angle=diff,           # 只画内角部分（<180°）
+    arc_center=A,
+    color=ColorsFP.ACCENT_C,
+    stroke_width=3.0,
+)
+```
+
+#### 23.3.2 角度标签定位 — 角平分线法（强制）
+
+```python
+# ❌ 错误：方向猜测——可能跑到角外部
+lbl.next_to(ang_APB, UR)      # UR方向不一定在角内部！
+lbl.next_to(ang_BPC, DOWN)    # DOWN方向可能跑偏！
+
+# ✅ 正确：沿角平分线方向精确定位
+def _angle_label_pos(center, p1, p2, radius=0.65):
+    """计算角的平分线方向，返回标签位置（保证在角内部）"""
+    v1 = (p1 - center)[:2]
+    v2 = (p2 - center)[:2]
+    v1 = v1 / (np.linalg.norm(v1) + 1e-9)
+    v2 = v2 / (np.linalg.norm(v2) + 1e-9)
+    bisect = v1 + v2           # 角平分线向量
+    if np.linalg.norm(bisect) < 1e-9:
+        bisect = np.array([-v1[1], v1[0]])   # 平角时的退化处理
+    else:
+        bisect = bisect / np.linalg.norm(bisect)
+    return center + np.array([bisect[0] * radius, bisect[1] * radius, 0])
+
+# 用法示例：三个角各一个标签
+la = MathTex(r"120^{\circ}", font_size=18, color=ColorsFP.ACCENT_C).move_to(
+    _angle_label_pos(F, A, B, 0.70))
+lb = MathTex(r"120^{\circ}", font_size=18, color=ColorsFP.ACCENT_C).move_to(
+    _angle_label_pos(F, B, C, 0.70))
+lc = MathTex(r"120^{\circ}", font_size=18, color=ColorsFP.ACCENT_C).move_to(
+    _angle_label_pos(F, C, A, 0.70))
+```
+
+**为什么不能用 `.next_to(angle, UR/DOWN/...)`？**
+- Angle 对象的 UR 方向是相对于 Angle 自身坐标系的
+- 对于非标准方向的角，UR 可能指向角的外部
+- 角平分线法**数学上保证**标签在角内部
+
+### 23.4 Manim API 兼容性（避免运行时 TypeError）
+
+> **教训来源**：`TypeError: got multiple values for argument 'radius'` — Angle() 构造函数混用了位置参数和关键字参数。
+
+#### 问题根因
+
+Manim 的构造函数签名中，某些参数既可以通过位置传递也可以通过关键字传递。当两者混用时 Python 报错：
+
+```python
+# ❌ 错误：位置参数和关键字参数混用
+Angle(Line(F, A), Line(F, B), 0.44, ColorsFP.ACCENT_C, 3.0, quadrant=(-1,-1))
+# TypeError: got multiple values for argument 'radius'
+# 原因：0.44 被匹配为 radius（位置），后面如果有关键字radius就冲突
+
+# ✅ 正确：全部使用关键字参数
+Angle(Line(F, A), Line(F, B),
+     radius=0.44,
+     color=ColorsFP.ACCENT_C,
+     stroke_width=3.0)
+```
+
+#### 强制规则
+
+| 函数 | 必须用关键字参数的参数 |
+|------|---------------------|
+| `Angle()` | radius, color, stroke_width, quadrant, other_angle |
+| `Line()` | buff, color, stroke_width |
+| `Dot()` | radius, color |
+| `Arc()` | radius, start_angle, angle, arc_center, color, stroke_width |
+| `MathTex()` | font_size, color |
+| `Text()` | font, font_size, color |
+| `Polygon()` | color, stroke_width |
+
+**通用规则**：当参数 >= 4 个时，全部使用关键字参数。宁可多写几个字母也不要遇到莫名其妙的 TypeError。
+
+### 23.5 列表逐行动画防重叠（文字列表场景）
+
+> **教训来源**：总结列表先 FadeIn 再 arrange 导致文字先重叠后跳变。
+
+```python
+# ❌ 错误：边淡入边排列（每行FadeIn时还没排好位！）
+summary = VGroup()
+for item in items_data:
+    row = build_row(item)
+    summary.add(row)
+    self.play(FadeIn(row))          # 此时 row 还没排列好！
+summary.arrange(DOWN, aligned_edge=LEFT, buff=0.30)  # 排列后位置突变！
+
+# ✅ 正确：先预排列完成，再逐行淡入
+rows_list = []
+for i, item in enumerate(items_data):
+    row = build_row(item)
+    rows_list.append((row, f"第{i+1}个要点"))
+
+summary = VGroup(*[r for r, _ in rows_list])
+summary.arrange(DOWN, aligned_edge=LEFT, buff=0.30)  # 先排列
+summary.move_to([...])                                   # 再定位
+
+# 最后逐行淡入（此时位置已正确固定）
+for i, (row, sub_txt) in enumerate(rows_list):
+    s_new = self.subtitle(sub_txt)
+    self.play(FadeIn(row), Transform(sub, s_new), run_time=0.9)
+    self.wait(0.7)
+```
+
+### 23.6 命名一致性（全局统一）
+
+> **教训来源**：用户反馈"把P写成了PF了"——全文3处使用了 `P_F` 而其他地方用的是 `P`。
+
+#### 强制规范
+
+| 场景 | 推荐 | 禁止 |
+|------|------|------|
+| 特殊点标签 | 全局统一用 `P` 或全局统一用 `P_F` | 同一项目中混用两种写法 |
+| 顶点标签 | A/B/C/P 统一大小写 | 一处大写一处小写 |
+| 变量命名 | snake_case: `line_PA`, `dot_P`, `ang_APB` | camelCase 混用 |
+
+#### 验证方法
+
+每次修改后，用搜索确认一致性：
+```
+搜索 "P_F" → 确认要么全部替换为 "P"，要么全部保留为 "P_F"
+搜索 "p_f" / "pf" / "PF" → 确保无遗漏的大小写变体
+```
+
+### 23.7 项目结构模板（单文件架构）
+
+> **基于费马点项目的实际验证的项目结构**。
+
+```
+project/
+├── fermat_point.py              # 主文件（常量+基类+所有Scene类）
+│   ├── 工具函数区（compute_fermat_point, rotate_around, make_wander_path...）
+│   ├── 配色方案（class ColorsFP）
+│   ├── 配音文案（VO_COPY, AUDIO_DURATIONS 字典）
+│   ├── 场景基类（class FermatScene(Scene)）
+│   │   ├── make_title_pair()
+│   │   ├── subtitle()
+│   │   └── flash_key()
+│   └── Scene01 ~ SceneNN（继承 FermatBase）
+├── fermat_merge.py             # 后期脚本（TTS生成+合并+拼接+倍速输出）
+├── render_hq.py                # 批量高质量渲染脚本（可选）
+└── media/videos/fermat_point/1080p60/
+    ├── Scene01Opening.mp4       # 各场景独立视频
+    ├── Scene03PropertyOne.mp4
+    └── ...
+最终输出: fermat_point_final.mp4  # 后期处理后成品
+```
+
+#### 基类模板（含布局坐标系）
+
+```python
+class FermatScene(Scene):
+    """
+    布局坐标系（1920x1080）：
+      标题行:   Y ≈ +3.0
+      副标题:   Y ≈ +2.0
+      图形区:   LEFT*2.0 + DOWN*0.5   （中心约 [-3.5, -0.5]）
+      右侧文字: X ≈ +3.8              （Y范围 +1.5 ~ -2.0）
+      字幕条:   Y ≈ -3.0              （距底部固定）
+    """
+    TITLE_TOP_Y   = 3.0
+    SUBTITLE_Y    = 2.0
+    FIG_BASE      = LEFT * 2.0 + DOWN * 0.5
+    TEXT_COL_X    = 3.8
+    SUB_BOTTOM_Y  = -3.0
+
+    def subtitle(self, text):
+        txt = Text(text, font="Microsoft YaHei", font_size=21, color=WHITE).set_max_width(15.5)
+        bar = Rectangle(width=16.5, height=0.62, fill_color=BLACK,
+                        fill_opacity=0.72, stroke_width=0)
+        bar.move_to([0, self.SUB_BOTTOM_Y, 0])
+        txt.move_to(bar.get_center())
+        return VGroup(bar, txt)
+
+    def flash_key(self, mobj, color=None, n=2):
+        c = color or ColorsFP.ACCENT_C
+        orig = mobj.get_color() if hasattr(mobj, 'get_color') else WHITE
+        for _ in range(n):
+            self.play(mobj.animate.set_color(c), run_time=0.18)
+            self.play(mobj.animate.set_color(orig), run_time=0.18)
+```
+
+### 23.8 后期处理脚本模板（merge.py）
+
+```python
+"""后期处理：TTS生成 → 音视频合并 → 场景拼接 → 倍速输出"""
+import subprocess, os
+
+WORK = r"D:\project"
+os.chdir(WORK)
+
+VO_COPY = {
+    1: "在一个三角形内找特殊点P...",
+    2: "费马点的第一个性质...",
+    3: "费马点的第二个性质...",
+}
+SCENES = [("Scene01Opening", 1), ("Scene03PropertyOne", 3), ("Scene04PropertyTwo", 4)]
+VIDEO_DIR = os.path.join(WORK, "media", "videos", "xxx", "1080p60")
+TEMP_DIR = os.path.join(WORK, "temp_merge")
+OUTPUT = os.path.join(WORK, "xxx_final.mp4")
+
+def run(cmd, desc=""):
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"  FAIL: {r.stderr.strip()[:200]}"); return False
+    return True
+
+# Step 1: TTS
+for scene_name, vo_id in SCENES:
+    run(f'edge-tts --voice zh-CN-YunyangNeural --text "{VO_COPY[vo_id]}" '
+        f'--write-media "{os.path.join(TEMP_DIR, f"audio_{vo_id}.mp3")}"')
+
+# Step 2: 合并音视频
+for scene_name, vo_id in SCENES:
+    run(f'ffmpeg -y -i video_in -i audio_in -c:v libx264 -preset fast -crf 18 '
+        f'-c:a aac -b:a 128k -shortest merged_out')
+
+# Step 3: 拼接
+run(f'ffmpeg -y -f concat -safe 0 -i concat.txt -c copy concat_out')
+
+# Step 4: 倍速（推荐 1.3x）
+SPEED = 1.3
+run(f'ffmpeg -y -i concat_out '
+    f'-filter_complex "[0:v]setpts=PTS/{SPEED}[v];[0:a]atempo={SPEED}[a]" '
+    f'-map "[v]" -map "[a]" -c:v libx264 -crf 20 final_out')
+```
+
+### 23.9 常见问题速查表（一站式查阅）
+
+| 问题 | 原因 | 解决方法 | 规则编号 |
+|------|------|---------|---------|
+| 角弧画到外角去了 | 钝角下 Angle() 方向不确定 | 手动 Arc + arctan2 计算极角 | R3 |
+| 标注位置不对/跑到外面去 | `.next_to(angle, UR)` 方向猜测不准 | `_angle_label_pos()` 角平分线法 | R3 |
+| TypeError: multiple values | Angle/Line 混用了位置+关键字参数 | 全部改为关键字参数 | R4 |
+| 文字列表先重叠后跳变 | 先 FadeIn 再 arrange() | 先 arrange() 再逐行 FadeIn | R5 |
+| P点移动结束突然跳到别处 | 游走后又执行了 `move_to(F)` | 游走结束直接停住，不加额外动画 | R2 |
+| P标签漂移跟不上点 | `.animate.next_to(dot_P)` 有延迟 | 基于target位置重新计算 get_center() | R2 |
+| 渲染弹出播放器窗口 | 忘了加 `-qh` 或没重定向 stderr | 用 `-pqh` 或 `2>$null` | — |
+| P写成PF/PF写成P | 全文命名不一致 | 全局搜索替换确认统一 | R6 |
+| 开场动画太慢（>5s才进入正题） | 用 Create/FadeIn 画静态图形 | 改用 `self.add()` 直接出图 | R1 |
+| 配色不一致 | 各 Scene 自己定义颜色 | 统一继承基类的配色类 | R7 |
+
+### 23.10 迭代修复标准工作流
+
+当用户反馈视频问题时：
+
+```
+Step 1: 定位问题帧
+ 用户提供时间点（如"40秒左右"）→ 换算为 Scene + 行号
+
+Step 2: 读取相关代码段
+  确认具体哪一行/哪一段逻辑导致问题
+
+Step 3: 对照本章 R1-R6 匹配规则
+  找到对应的正确做法
+
+Step 4: 修改后语法检查
+  ast.parse(open('file.py').read())
+
+Step 5: 低质量快速测试
+  manim -pql file.py SceneName  （<30秒验证逻辑）
+
+Step 6: 高质量渲染修改过的场景
+  manim -pqh file.py SceneName
+
+Step 7: 后期处理
+  python merge.py
+
+Step 8: open_result_view 展示最终MP4
+```
+
+**只重渲染修改过的场景**（利用缓存加速未修改场景）。
+
+---
+
+> 本Skill v3.2.0 在 v3.1.0 基础上新增第二十三章（实战经验规则），融合费马点视频12轮迭代修复的完整实战经验。
+> v3.1.0: 文字左对齐布局规范
+> v3.0.0: 几何坐标精确计算 + 图文分离布局
+> v2.9.0: 用户补充技术规范
+> v2.8.0: 全自动化升级
