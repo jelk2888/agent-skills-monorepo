@@ -274,6 +274,319 @@ server.registerTool(
   }
 );
 
+// ─── 代码生成并保存 ───
+
+server.registerTool(
+  "gemini_send_code",
+  {
+    description: `向 Gemini 发送代码生成请求，自动点击"下载代码"按钮下载并保存到指定目录。
+
+【长耗时工具】同步阻塞等待 Gemini 回复完毕才返回。典型耗时 30~120 秒，必须等到最终结果再回传用户。
+【功能】
+1. 发送代码生成提示词到 Gemini
+2. 等待代码生成完成
+3. 自动点击"下载代码"按钮
+4. 将代码文件移动到用户指定目录
+
+【参数】
+- message: 代码生成提示词
+- outputPath: 代码保存目录路径（绝对路径）
+- timeout: 超时时间（毫秒），默认 480000（8分钟）`,
+    inputSchema: {
+      message: z.string().describe("发送给 Gemini 的代码生成提示词"),
+      outputPath: z.string().describe("代码文件保存的目标目录路径（绝对路径）"),
+      timeout: z.number().default(480000).describe("等待回答完成的超时时间（毫秒），默认 480000（8分钟）"),
+    },
+  },
+  async ({ message, outputPath, timeout }) => {
+    try {
+      const { ops } = await createGeminiSession();
+
+      // 1. 发送消息并等待 Gemini 回复完毕
+      const sendResult = await ops.sendAndWait(message, { timeout });
+      if (!sendResult.ok) {
+        disconnect();
+        return {
+          content: [{ type: "text", text: `代码生成失败: ${sendResult.error}，耗时 ${sendResult.elapsed}ms` }],
+          isError: true,
+        };
+      }
+
+      // 2. 点击"下载代码"按钮进行下载
+      const downloadResult = await ops.downloadGeneratedCode({ timeout: 30_000 });
+
+      // 执行完毕立刻断开，交还给 Daemon 倒计时
+      disconnect();
+
+      if (!downloadResult.ok) {
+        return {
+          content: [{ type: "text", text: `代码下载失败: ${downloadResult.error}` }],
+          isError: true,
+        };
+      }
+
+      // 3. 将文件移动到用户指定目录并重命名
+      const { resolve: pathResolve, join: pathJoin, extname: pathExtname } = await import('node:path');
+      const { existsSync, mkdirSync, copyFileSync, unlinkSync, renameSync } = await import('node:fs');
+
+      const targetDir = pathResolve(outputPath);
+      mkdirSync(targetDir, { recursive: true });
+
+      // 从 message 提取文件名（知识点+交互动画）
+      const newBasename = extractNameFromMessage(message);
+      // 从下载文件名继承扩展名
+      const extension = pathExtname(downloadResult.suggestedFilename) || '.html';
+      const newFilename = `${newBasename}${extension}`;
+
+      // 先复制到目标目录
+      const downloadedFile = downloadResult.filePath;
+      const tempTargetPath = pathJoin(targetDir, downloadResult.suggestedFilename);
+      const finalTargetPath = pathJoin(targetDir, newFilename);
+
+      copyFileSync(downloadedFile, tempTargetPath);
+
+      // 重命名文件
+      try {
+        renameSync(tempTargetPath, finalTargetPath);
+      } catch (renameErr) {
+        // 如果 rename 失败（跨设备等），用 copy + delete 方式
+        copyFileSync(tempTargetPath, finalTargetPath);
+        unlinkSync(tempTargetPath);
+      }
+
+      // 删除临时文件
+      try {
+        if (existsSync(downloadedFile)) {
+          unlinkSync(downloadedFile);
+        }
+      } catch (e) {
+        console.error(`[mcp] 删除临时文件失败: ${e.message}`);
+      }
+
+      console.error(`[mcp] 代码已保存至 ${finalTargetPath}`);
+      console.error(`[mcp] 刷新次数: ${sendResult.refreshCount || 0}`);
+
+      return {
+        content: [{ type: "text", text: `✅ 代码生成成功！\n📁 文件路径: ${finalTargetPath}\n📊 刷新次数: ${sendResult.refreshCount || 0}` }],
+      };
+    } catch (err) {
+      return { content: [{ type: "text", text: `执行崩溃: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+/**
+ * 从消息提示词中提取文件名（知识点+交互动画）
+ * 例如："用 HTML 写一个费马点动画" → "费马点交互动画"
+ * @param {string} message - 发送给 Gemini 的提示词
+ * @returns {string} 提取的文件名（不含扩展名）
+ */
+function extractNameFromMessage(message) {
+  if (!message) return '交互动画';
+
+  // 常见的主题词提取模式
+  const patterns = [
+    /(?:一个|关于|制作|创建|实现|编写|写一个)\s*([^\s\d]+(?:点|图|动画|演示|教程|原理|性质|计算|分析|模拟|仿真|可视化|交互|游戏))/i,
+    /([^\s\d]+(?:点|图|动画|演示|教程|原理|性质|计算|分析|模拟|仿真|可视化|交互|游戏))/i,
+    /(?:HTML|JS|JavaScript|Python|CSS)\s*(?:写|制作|创建|实现)?\s*(?:一个)?\s*([^\s]+?)(?:动画|演示|教程|原理|代码|文件)?/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      let name = match[1].trim();
+      // 清理特殊字符
+      name = name.replace(/[<>:"/\\|?*\[\]【】（）()「」『』《》]/g, '_')
+                 .replace(/\s+/g, '_')
+                 .replace(/_{2,}/g, '_');
+      // 确保不超过50字符
+      if (name.length > 50) name = name.substring(0, 50);
+      return name + '_交互动画';
+    }
+  }
+
+  // 回退方案：从提示词中提取所有中文/英文关键词
+  const words = message.match(/[\u4e00-\u9fa5a-zA-Z0-9]+/g) || [];
+  const significantWords = words.filter(w =>
+    w.length >= 2 &&
+    !['一个','什么','如何','怎么','请','生成','创建','代码','关于','实现','制作','编写','使用','通过','利用','使用','一个'].includes(w)
+  );
+
+  if (significantWords.length > 0) {
+    const name = significantWords.slice(0, 3).join('_');
+    return name + '_交互动画';
+  }
+
+  return '交互动画';
+}
+
+/**
+ * 从文本中提取代码块
+ * @param {string} text
+ * @returns {Array<{language: string, code: string}>}
+ */
+function extractCodeBlocks(text) {
+  const blocks = [];
+  // 匹配 ```language ... ``` 格式
+  const regex = /```(\w*)\n?([\s\S]*?)```/g;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    const language = match[1] || detectLanguage(match[2]);
+    const code = match[2].trim();
+    if (code.length > 0) {
+      blocks.push({ language, code });
+    }
+  }
+  
+  // 如果没有找到代码块，尝试检测文本中是否有缩进的代码
+  if (blocks.length === 0 && text.includes('\n')) {
+    const lines = text.split('\n');
+    const codeLines = lines.filter(line => 
+      line.startsWith('  ') || line.startsWith('\t') || 
+      line.match(/^(function|const|let|var|import|export|class|def |public |private |protected )/)
+    );
+    if (codeLines.length > 5) {
+      blocks.push({ 
+        language: detectLanguage(codeLines.join('\n')), 
+        code: codeLines.join('\n') 
+      });
+    }
+  }
+  
+  return blocks;
+}
+
+/**
+ * 根据代码内容检测语言
+ * @param {string} code 
+ * @returns {string}
+ */
+function detectLanguage(code) {
+  const firstLine = code.split('\n')[0].trim();
+  
+  if (code.includes('import ') && (code.includes(' from ') || code.includes(' require('))) {
+    return 'javascript';
+  }
+  if (code.includes('function ') || code.includes('const ') || code.includes('=>')) {
+    return 'javascript';
+  }
+  if (code.includes('def ') && code.includes(':')) {
+    return 'python';
+  }
+  if (code.includes('class ') && code.includes('{')) {
+    return 'java';
+  }
+  if (code.includes('#include') || code.includes('int main(')) {
+    return 'cpp';
+  }
+  if (code.includes('<!DOCTYPE html') || code.includes('<html')) {
+    return 'html';
+  }
+  if (code.includes('import ') && code.includes('{')) {
+    return 'css';
+  }
+  if (firstLine.startsWith('#!/bin/bash') || firstLine.startsWith('#!/bin/sh')) {
+    return 'bash';
+  }
+  if (code.includes('package ') && code.includes('func ')) {
+    return 'go';
+  }
+  if (code.includes('fn ') && code.includes('->')) {
+    return 'rust';
+  }
+  if (code.includes('<?php')) {
+    return 'php';
+  }
+  if (code.includes('<%') && code.includes('%>')) {
+    return 'asp';
+  }
+  
+  return 'txt';
+}
+
+/**
+ * 获取文件扩展名
+ * @param {string} language 
+ * @param {string} code 
+ * @returns {string}
+ */
+function getExtension(language, code) {
+  const extMap = {
+    'javascript': 'js',
+    'js': 'js',
+    'typescript': 'ts',
+    'ts': 'ts',
+    'python': 'py',
+    'py': 'py',
+    'java': 'java',
+    'cpp': 'cpp',
+    'c': 'c',
+    'c++': 'cpp',
+    'html': 'html',
+    'css': 'css',
+    'bash': 'sh',
+    'sh': 'sh',
+    'shell': 'sh',
+    'go': 'go',
+    'rust': 'rs',
+    'php': 'php',
+    'ruby': 'rb',
+    'rb': 'rb',
+    'swift': 'swift',
+    'kotlin': 'kt',
+    'scala': 'scala',
+    'typescript': 'ts',
+    'json': 'json',
+    'xml': 'xml',
+    'yaml': 'yaml',
+    'yml': 'yml',
+    'sql': 'sql',
+    'markdown': 'md',
+    'md': 'md',
+  };
+  
+  const lowerLang = (language || '').toLowerCase();
+  return extMap[lowerLang] || 'txt';
+}
+
+/**
+ * 确定文件名
+ * @param {string} hint 
+ * @param {string} language 
+ * @param {string} extension 
+ * @returns {string}
+ */
+function determineFilename(hint, language, extension) {
+  // 如果提供了明确的文件名提示
+  if (hint && hint.length > 0 && hint.length < 100) {
+    // 清理文件名中的非法字符
+    let cleanName = hint
+      .replace(/[<>:"/\\|?*]/g, '_')
+      .replace(/\s+/g, '_')
+      .replace(/_{2,}/g, '_')
+      .substring(0, 50);
+    return `${cleanName}.${extension}`;
+  }
+  
+  // 从提示词中提取关键词
+  const keywords = [];
+  const hintWords = hint.split(/\s+/);
+  for (const word of hintWords) {
+    if (word.length > 3 && !['什么','如何','怎么','请','生成','创建','代码','一个','关于'].includes(word)) {
+      keywords.push(word);
+      if (keywords.length >= 3) break;
+    }
+  }
+  
+  if (keywords.length > 0) {
+    return `generated_${keywords.join('_')}.${extension}`;
+  }
+  
+  // 默认文件名
+  return `gemini_code_${Date.now()}.${extension}`;
+}
+
 // ─── 图片上传 ───
 
 server.registerTool(

@@ -123,6 +123,14 @@ const SELECTORS = {
     'button[aria-label="Close"]',
     'button[aria-label="关闭"]',
   ],
+  /** 代码下载按钮（hover 代码块后出现） */
+  downloadCodeBtn: [
+    'button[data-test-id="download-code-button"]',
+    'button[aria-label*="下载代码" i]',
+    'button[aria-label*="download code" i]',
+    'button[aria-label*="Download code" i]',
+    'button.download-code-button',
+  ],
 };
 
 /**
@@ -962,6 +970,154 @@ export function createOps(page) {
     },
 
     /**
+     * 下载 Gemini 生成的代码文件
+     *
+     * 流程：
+     *   1. 通过 CDP 设置下载路径到 outputDir
+     *   2. 找到最新生成的代码块（div.code-block 或 pre code）
+     *   3. hover 到代码块上，触发工具栏显示
+     *   4. 点击"下载代码"按钮
+     *   5. 等待下载完成
+     *
+     * @param {object} [options]
+     * @param {number} [options.index] - 代码块索引（从0开始，从旧到新），不传则下载最新一个
+     * @param {number} [options.timeout=30000] - 等待下载完成的超时时间（ms）
+     * @returns {Promise<{ok: boolean, filePath?: string, suggestedFilename?: string, index?: number, total?: number, error?: string, detail?: string}>}
+     */
+    async downloadGeneratedCode({ index, timeout = 30_000 } = {}) {
+      // 1. 查找代码块
+      const codeBlockInfo = await op.query((targetIndex) => {
+        // 尝试多种代码块选择器
+        let codeBlocks = [...document.querySelectorAll('div.code-block')];
+        if (!codeBlocks.length) {
+          codeBlocks = [...document.querySelectorAll('pre code')];
+        }
+        if (!codeBlocks.length) {
+          codeBlocks = [...document.querySelectorAll('code')];
+        }
+        if (!codeBlocks.length) {
+          return { ok: false, error: 'no_code_blocks_found', total: 0 };
+        }
+
+        const i = targetIndex == null ? codeBlocks.length - 1 : targetIndex;
+        if (i < 0 || i >= codeBlocks.length) {
+          return { ok: false, error: 'index_out_of_range', total: codeBlocks.length, requestedIndex: i };
+        }
+
+        const codeBlock = codeBlocks[i];
+        codeBlock.scrollIntoView({ behavior: 'instant', block: 'center' });
+        const rect = codeBlock.getBoundingClientRect();
+
+        return {
+          ok: true,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          index: i,
+          total: codeBlocks.length,
+        };
+      }, index);
+
+      if (!codeBlockInfo.ok) return codeBlockInfo;
+
+      await sleep(500);
+
+      // 2. 通过 CDP 设置下载路径
+      const { resolve: pathResolve } = await import('node:path');
+      const downloadDir = pathResolve(config.outputDir);
+      mkdirSync(downloadDir, { recursive: true });
+
+      const client = page._client();
+      await client.send('Browser.setDownloadBehavior', {
+        behavior: 'allow',
+        downloadPath: downloadDir,
+        eventsEnabled: true,
+      });
+
+      // 3. 设置下载监听
+      const downloadPromise = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          client.off('Browser.downloadWillBegin', onBegin);
+          client.off('Browser.downloadProgress', onProgress);
+          reject(new Error('download_timeout'));
+        }, timeout);
+
+        let suggestedFilename = null;
+
+        function onBegin(evt) {
+          suggestedFilename = evt.suggestedFilename || null;
+        }
+
+        function onProgress(evt) {
+          if (evt.state === 'completed') {
+            clearTimeout(timer);
+            client.off('Browser.downloadWillBegin', onBegin);
+            client.off('Browser.downloadProgress', onProgress);
+            resolve({ suggestedFilename });
+          } else if (evt.state === 'canceled') {
+            clearTimeout(timer);
+            client.off('Browser.downloadWillBegin', onBegin);
+            client.off('Browser.downloadProgress', onProgress);
+            reject(new Error('download_canceled'));
+          }
+        }
+
+        client.on('Browser.downloadWillBegin', onBegin);
+        client.on('Browser.downloadProgress', onProgress);
+      });
+
+      // 4. hover 到代码块上，触发工具栏
+      console.log(`[downloadGeneratedCode] hover 到代码块 (${codeBlockInfo.x}, ${codeBlockInfo.y})...`);
+      await page.mouse.move(codeBlockInfo.x, codeBlockInfo.y);
+      await sleep(800);
+
+      // 5. 点击"下载代码"按钮
+      const btnSelector = SELECTORS.downloadCodeBtn.join(',');
+
+      let clickResult;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        clickResult = await op.click(btnSelector);
+        if (clickResult.ok) break;
+        console.log(`[downloadGeneratedCode] 第${attempt}次点击下载按钮失败，重试 hover...`);
+        await page.mouse.move(codeBlockInfo.x, codeBlockInfo.y);
+        await sleep(500);
+      }
+
+      if (!clickResult.ok) {
+        return { ok: false, error: 'download_code_btn_not_found', index: codeBlockInfo.index, total: codeBlockInfo.total };
+      }
+
+      // 6. 等待下载完成
+      try {
+        const { suggestedFilename } = await downloadPromise;
+        const { join } = await import('node:path');
+        const { existsSync } = await import('node:fs');
+
+        const targetName = suggestedFilename || `gemini_code_${Date.now()}.txt`;
+        const filePath = join(downloadDir, targetName);
+
+        if (!existsSync(filePath)) {
+          console.warn(`[ops] 下载文件未找到: ${filePath}`);
+          return { ok: false, error: 'downloaded_file_not_found', filePath, index: codeBlockInfo.index, total: codeBlockInfo.total };
+        }
+
+        return {
+          ok: true,
+          filePath,
+          suggestedFilename: targetName,
+          index: codeBlockInfo.index,
+          total: codeBlockInfo.total,
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          error: err.message,
+          index: codeBlockInfo.index,
+          total: codeBlockInfo.total,
+        };
+      }
+    },
+
+    /**
      * 为当前会话中的图片创建 Gemini 公开分享链接
      *
      * 流程：
@@ -1466,7 +1622,7 @@ export function createOps(page) {
      * @returns {Promise<{ok: boolean, elapsed: number, finalStatus?: object, error?: string}>}
      */
     async sendAndWait(prompt, opts = {}) {
-      const { timeout = 120_000, interval = 1_000, onPoll } = opts;
+      const { timeout = 480_000, interval = 1_000, onPoll } = opts;
 
       // 1. 填写
       const fillResult = await this.fillPrompt(prompt);
@@ -1486,9 +1642,37 @@ export function createOps(page) {
       // 3. 轮询等待（回到麦克风态 = Gemini 回答完毕）
       const start = Date.now();
       let lastStatus = null;
+      const refreshInterval = 150_000; // 2分30秒刷新间隔（150秒）
+      let lastRefreshTime = 0; // 记录上次刷新时间
+      let refreshCount = 0; // 刷新次数统计
+      const shouldAutoRefresh = timeout > 180_000; // 超时>3分钟才启用自动刷新
 
       while (Date.now() - start < timeout) {
         await sleep(interval);
+        const currentElapsed = Date.now() - start;
+
+        // 新增逻辑：如果设置了超时>3分钟，则每过150秒刷新一次
+        if (shouldAutoRefresh && currentElapsed - lastRefreshTime > refreshInterval) {
+          console.warn(`[sendAndWait] ⏱️ 已运行 ${Math.round(currentElapsed / 1000)}s，距上次刷新 ${Math.round((currentElapsed - lastRefreshTime) / 1000)}s，超过 ${refreshInterval / 1000}s 阈值，自动刷新页面（第 ${refreshCount + 1} 次刷新）`);
+
+          try {
+            // 执行页面刷新
+            const refreshResult = await this.reloadPage({ timeout: 30_000 });
+            if (refreshResult.ok) {
+              lastRefreshTime = currentElapsed; // 更新上次刷新时间
+              refreshCount++; // 增加刷新计数
+              console.log(`[sendAndWait] ✅ 页面刷新成功 (${refreshResult.elapsed}ms)，等待3秒后继续轮询...`);
+            } else {
+              console.error(`[sendAndWait] ❌ 页面刷新失败: ${refreshResult.error}`);
+            }
+          } catch (refreshError) {
+            console.error(`[sendAndWait] ❌ 页面刷新异常: ${refreshError.message}`);
+          }
+
+          // 等待3秒让页面稳定
+          await sleep(3000);
+          continue; // 继续下一轮轮询
+        }
 
         const poll = await this.pollStatus();
         lastStatus = poll;
@@ -1501,6 +1685,7 @@ export function createOps(page) {
             ok: true,
             elapsed: Date.now() - start,
             finalStatus: poll,
+            refreshCount, // 新增：刷新次数
             text: textResp.ok ? textResp.text : null,
             textIndex: textResp.ok ? textResp.index : null,
           };
@@ -1510,7 +1695,13 @@ export function createOps(page) {
         }
       }
 
-      return { ok: false, error: 'timeout', elapsed: Date.now() - start, finalStatus: lastStatus };
+      return { 
+        ok: false, 
+        error: 'timeout', 
+        elapsed: Date.now() - start, 
+        finalStatus: lastStatus,
+        refreshCount // 新增：刷新次数
+      };
     },
 
     /**
