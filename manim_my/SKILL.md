@@ -1,7 +1,7 @@
 ---
 name: manim_my
 description: |
-  Manim 物理/数学动画创作技能（3b1b风格增强版，v3.2.0 全自动化版 + 实战经验规则）。
+  Manim 物理/数学动画创作技能（3b1b风格增强版，v3.3.0 全自动化版 + 实战经验规则）。
   使用 Manim（ManimCommunity 社区版）+ manim-voiceover + EdgeTTS 生成高质量教学视频。
 
   【全自动触发】当用户说以下任一指令时，自动执行完整流程：
@@ -20,10 +20,10 @@ description: |
   触发词：做视频、生成视频、教学视频、讲解视频、数学动画、物理动画、
   manim、3b1b风格、教学动画、公式动画、题目讲解、图片讲解、解题视频、
   调研、研究、深度讲解、文献、定理、实验、文字左对齐、左对齐。
-version: "3.2.0"
+version: "3.3.0"
 ---
 
-# Manim 物理/数学动画创作技能（3b1b 风格增强版，v3.2.0 全自动化 + 实战经验）
+# Manim 物理/数学动画创作技能（3b1b 风格增强版，v3.3.0 全自动化 + 实战经验）
 
 > **「我不是在教数学，我是在分享我自己理解数学时的兴奋。」** —— Grant Sanderson (3Blue1Brown)
 
@@ -2915,6 +2915,7 @@ class LeftAlignExample(VoiceoverScene):
 > v2.8.0: 全自动化升级——用户只需说"做一个XXXX教学视频"自动触发完整流程：研究员模式(网络调研→信息提炼)→提示词模板生成(SCALS扩展→场景规划→技术规范)→视频制作(代码生成→渲染1080p60→SRT烧录→1.3x加速)；新增全自动触发条件检测（4种正则匹配模式）、3阶段零人工干预工作流图、决策规则树、默认参数表；支持全自动/手动双模式切换
 > v2.9.0: 用户补充技术规范——新增第二十章，详细规范技术栈/渲染规格/动画规范/闪烁强调/图形规范/一致性审查/后期处理管线/输出要求；中文字体默认使用Microsoft YaHei；EdgeTTS服务封装和后处理脚本作为标准输出
 > v3.0.0: 几何坐标精确计算规范+图文分离布局规范——新增第二十一章（强制执行）；基于倍长中线视频制作教训：①所有派生点（中点/延长线/对称点）必须用公式计算，禁止手工硬编码坐标；②屏幕边界验证（所有点必须在可视区域内）；③全等三角形SAS条件数值验证；④图文分离布局（图形左移1.5-2.0+文字右置x=3.0-3.5+字号缩小）；⑤禁止文字放图形线段上或图形下方；⑥一致性审查新增坐标计算审查和图文布局审查
+> v3.1.1: 新增外部示例索引来源——补充 MarkHoo 的 Manim 中文文档示例入口，便于检索社区示例并扩展动画实现思路
 
 ---
 
@@ -2927,6 +2928,8 @@ class LeftAlignExample(VoiceoverScene):
 > - [Buildbleu Blog](https://docs.buildbleu.com/blog/using-llms-to-generate-educational-videos-with-manim/) — 多Agent并行+RAG+多轮修正
 > - [Claude Best Practices](https://claude.com/blog/best-practices-for-prompt-engineering) — 明确性、具体性、示例驱动
 > - [CSDN Manim提示词指南](https://wenku.csdn.net/answer/a4c333s8w4w7) — 四大提问原则
+> - [Manim 中文文档示例索引](https://github.com/MarkHoo/manim-docs-zh-hans/blob/main/docs/examples/index.md) — 社区整理的中文示例入口（用于补充官方示例检索）
+> - [Manim 中文文档示例索引 Raw](https://raw.githubusercontent.com/MarkHoo/manim-docs-zh-hans/main/docs/examples/index.md) — 机器可直接读取的原始 Markdown 版本
 > - [AI视频SCALS框架](https://view.inews.qq.com/a/20251223A06JTM00) — Subject-Composition-Action-Location-Style
 
 ### 19.1 用户输入 → 视频的完整工作流
@@ -3626,9 +3629,79 @@ Step 8: open_result_view 展示最终MP4
 
 **只重渲染修改过的场景**（利用缓存加速未修改场景）。
 
+## 二十四、外部仓库学习融合规范（2026-05 更新）
+
+本章用于吸收以下仓库的方法论并落地为 `manim_my` 的执行规则：
+
+- https://github.com/MarkHoo/manim-docs-zh-hans/tree/main
+- https://github.com/helblazer811/ManimML
+- https://github.com/cai-hust/manim-tutorial-CN
+- https://github.com/HarleyCoops/Math-To-Manim
+- https://github.com/3b1b/videos
+- https://github.com/3b1b/manim
+- https://github.com/ManimCommunity/manim
+- https://github.com/SwayingWheatfield/manimgl-realtime/tree/master
+
+### 24.1 引擎分流原则（强制）
+
+1. 默认使用 **Manim Community Edition (CE)**，除非用户明确要求 `manimgl`。
+2. 若涉及 3b1b 老仓库代码，先明确“语法可能不兼容 CE”，再做迁移式实现（保留思路，重写 API）。
+3. 不混用安装指令：`manim`（CE）与 `manimgl`（3b1b）必须分开描述。
+
+### 24.2 示例优先策略（强制）
+
+1. 先查示例，再写场景：优先从“官方/社区示例索引”中匹配最接近的动画原型。
+2. 至少复用一个已验证模式（对象组织、动画节奏或布局方法），避免完全从零猜写。
+3. 复杂场景按“最小可运行片段 -> 分段扩展 -> 合成全片”推进。
+
+### 24.3 教学视频生产流程增强（强制）
+
+结合 Math-To-Manim 与现有工作流，默认采用：
+
+`问题 -> 调研 -> 分镜 -> 代码 -> 验证 -> 渲染 -> 后处理 -> 复盘`
+
+其中新增两条硬性要求：
+
+- **产物留痕**：保留分镜要点、关键公式、场景结构说明，便于后续迭代修复。
+- **分段验证**：每个 Scene 先低清快速验证（`-pql`），通过后再高质量渲染（`-pqh`）。
+
+### 24.4 机器学习动画扩展规则（来自 ManimML）
+
+当主题属于神经网络/深度学习时，优先采用“模块化图元组合”思路：
+
+- 用层级对象构建（输入层/卷积层/池化层/全连接层）
+- 用统一前向传播动画串联（避免每层手写不一致动画）
+- 激活函数、dropout、注意力等作为“可插拔场景块”
+
+目标：减少重复造轮子，让讲解重点放在“概念解释”而非底层绘图细节。
+
+### 24.5 实时交互能力说明（来自 manimgl-realtime）
+
+默认输出仍是离线渲染视频；若用户明确需要“拖动时间轴/倒放/Seek”，再进入实时模式：
+
+- 使用时间线思想管理动画段（segment）
+- 支持 seek / pause / reverse 的状态恢复
+- 这类需求需单独标记为“交互演示项目”，不与普通教学视频流程混淆
+
+### 24.6 CLI 与调试执行规范
+
+1. 常规成片：`manim -pqh file.py SceneName`
+2. 快速验证：`manim -pql file.py SceneName`
+3. 仅查终帧：`manim -s file.py SceneName`
+4. 分段渲染：使用 `-n` 从指定 animation 索引起渲染，缩短调试周期
+
+### 24.7 本章落地检查清单（每次任务都要过）
+
+- ✅ 是否先确认 CE / manimgl 引擎边界？
+- ✅ 是否引用了可对照的示例模式？
+- ✅ 是否按“低清验证 -> 高清渲染”执行？
+- ✅ 是否保留了可复盘的分镜与关键参数？
+- ✅ 若为 ML 主题，是否采用模块化网络图元？
+
 ---
 
-> 本Skill v3.2.0 在 v3.1.0 基础上新增第二十三章（实战经验规则），融合费马点视频12轮迭代修复的完整实战经验。
+> 本Skill v3.3.0 新增第二十四章（外部仓库学习融合规范）：吸收 Manim CE / 3b1b / ManimML / 教程仓库 / 实时渲染扩展的可落地方法，形成统一执行标准。
+> v3.2.0: 新增第二十三章（实战经验规则），融合费马点视频12轮迭代修复经验
 > v3.1.0: 文字左对齐布局规范
 > v3.0.0: 几何坐标精确计算 + 图文分离布局
 > v2.9.0: 用户补充技术规范
