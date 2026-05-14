@@ -169,21 +169,33 @@ Or with Claude Code, just say: `给这篇文章配个封面`
 
 See `cover/SKILL.md` for the full prompt template and workflow details.
 
-### gemini_batch_gen Batch Generation
+### gemini_web_access Batch Generation
 
-xiaohu-wechat-format integrates `gemini_batch_gen.js` for batch image generation with features like auto-login detection, batch generation, and graceful shutdown:
+xiaohu-wechat-format integrates `gemini_web_access.js` for batch image generation with features like auto-login detection, batch generation, and graceful shutdown. **This script is built-in and requires no external dependencies**:
 
 ```javascript
-// Call in code execution
-const { batchGenerate } = require('./scripts/gemini_batch_gen');
-const items = [
-  { prompt: 'Cover prompt', outputName: 'cover.png' },
-  { prompt: 'Article image 1', outputName: 'image1.png' }
-];
-await batchGenerate(items, './output/images');
+// Call in code execution (command line approach)
+const { exec } = require('child_process');
+exec(`node ./scripts/gemini_web_access.js image_prompts.json "./output/images"`);
 ```
 
-gemini_batch_gen automatically connects to gemini-skill, detects login status on first use, and saves generated images to the specified directory after batch completion.
+```bash
+# Command line usage
+node ./scripts/gemini_web_access.js image_prompts.json "output/images"
+node ./scripts/gemini_web_access.js image_prompts.json "output/images" --no-headless  # Show browser window
+```
+
+**Configuration file format (image_prompts.json)**:
+```json
+[
+  { "prompt": "Cover prompt", "outputName": "cover.png" },
+  { "prompt": "Article image 1", "outputName": "image1.png" },
+  { "prompt": "Article image 2", "outputName": "image2.png" }
+]
+```
+
+gemini_web_access uses Chrome DevTools Protocol to directly interact with the Gemini web interface. On first use, it automatically detects login status (pops up browser if login is needed), and saves generated images to the specified directory after batch completion. **Login state is persistently saved, no repeated login required for subsequent use**.
+
 
 ## How WeChat Compatibility Works
 

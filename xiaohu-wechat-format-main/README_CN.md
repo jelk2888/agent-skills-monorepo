@@ -174,21 +174,32 @@ python3 scripts/generate.py \
 
 完整提示词模板和工作流详见 `cover/SKILL.md`。
 
-### gemini_batch_gen 批量生成
+### gemini_web_access 批量生成
 
-xiaohu-wechat-format 集成了 `gemini_batch_gen.js` 批量图片生成工具，支持自动登录、批量生成、优雅关闭等功能：
+xiaohu-wechat-format 集成了 `gemini_web_access.js` 批量图片生成工具，支持自动登录、批量生成、优雅关闭等功能。**此脚本已内置集成到技能中，无需外部依赖**：
 
 ```javascript
-// 在 code execution 中调用
-const { batchGenerate } = require('./scripts/gemini_batch_gen');
-const items = [
-  { prompt: '封面提示词', outputName: 'cover.png' },
-  { prompt: '内文配图1', outputName: 'image1.png' }
-];
-await batchGenerate(items, './output/images');
+// 在 code execution 中调用（命令行方式）
+const { exec } = require('child_process');
+exec(`node ./scripts/gemini_web_access.js image_prompts.json "./output/images"`);
 ```
 
-gemini_batch_gen 会自动连接 gemini-skill，首次使用，会自动检测登录状态，批量生成后自动保存到指定目录。
+```bash
+# 命令行直接使用
+node ./scripts/gemini_web_access.js image_prompts.json "output/images"
+node ./scripts/gemini_web_access.js image_prompts.json "output/images" --no-headless  # 弹出浏览器窗口
+```
+
+**配置文件格式（image_prompts.json）**：
+```json
+[
+  { "prompt": "封面提示词", "outputName": "cover.png" },
+  { "prompt": "内文配图1", "outputName": "image1.png" },
+  { "prompt": "内文配图2", "outputName": "image2.png" }
+]
+```
+
+gemini_web_access 使用 Chrome 远程调试直接操作 Gemini 网页，首次使用会自动检测登录状态（如需登录会弹出浏览器），批量生成后自动保存到指定目录。**登录状态会持久化保存，后续使用无需重复登录**。
 
 ## 自定义主题
 

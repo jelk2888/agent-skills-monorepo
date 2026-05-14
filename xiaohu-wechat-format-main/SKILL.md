@@ -229,19 +229,29 @@ python3 {baseDir}/scripts/format.py \
 3. 调用图片生成服务（需在 `config.json` 中配置 `cover.image_generation_script`，或手动使用任意 AI 生图工具）
 4. 生成后默认插入文章标题下方
 
-**gemini_batch_gen 集成**：可以使用 `gemini_batch_gen.js 进行批量图片生成，功能包括：自动登录检测、批量生成、优雅关闭（保留登录状态）、会话管理等。使用方式：
+**gemini_web_access 集成**：可以使用 `gemini_web_access.js` 进行批量图片生成，功能包括：自动登录检测、批量生成、优雅关闭（保留登录状态）、会话管理等。**此脚本已内置集成到技能中，无需外部依赖**。使用方式：
 
 ```javascript
-// 在 code execution 中调用
-const { batchGenerate } = require('{skill_dir}/scripts/gemini_batch_gen');
-const items = [
-  { prompt: '封面提示词', outputName: 'cover.png' },
-  { prompt: '其他配图', outputName: 'image.png' }
-];
-await batchGenerate(items, '{workspace}/output/images');
+// 在 code execution 中调用（方式一：命令行）
+const { exec } = require('child_process');
+exec(`node ${skill_dir}/scripts/gemini_web_access.js config.json "输出目录"`);
+
+// 方式二：配置文件方式
+// 创建 image_prompts.json 配置文件：
+// [
+//   { "prompt": "封面提示词", "outputName": "cover.png" },
+//   { "prompt": "其他配图", "outputName": "image1.png" }
+// ]
+// 然后运行：node gemini_web_access.js image_prompts.json "输出目录"
 ```
 
-gemini_batch_gen 会自动连接 gemini-skill，首次使用，会自动检测登录状态，批量生成后自动保存到指定目录。
+```bash
+# 命令行直接使用
+node {skill_dir}/scripts/gemini_web_access.js image_prompts.json "output/images"
+node {skill_dir}/scripts/gemini_web_access.js image_prompts.json "output/images" --no-headless  # 弹出浏览器窗口
+```
+
+gemini_web_access 使用 Chrome 远程调试直接操作 Gemini 网页，首次使用会自动检测登录状态（如需登录会弹出浏览器），批量生成后自动保存到指定目录。**登录状态会持久化保存，后续使用无需重复登录**。
 
 ---
 
