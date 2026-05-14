@@ -340,6 +340,98 @@ python3 {baseDir}/scripts/publish.py \
 - **图片画廊**：`:::gallery[标题]` → 横向滚动多图容器
 - **长图展示**：`:::longimage[标题]` → 固定高度纵向滚动容器
 
+### 代码块样式规则（强制执行）
+
+**重要**：所有包含代码的文章（教程、技术文档、代码示例等），代码块必须使用**卡片式+横向滚动样式**。
+
+#### 样式规范
+
+当文章包含代码块时，**必须使用 GitHub 主题或基于 GitHub 主题的自定义主题**，确保代码块具有以下特性：
+
+1. **卡片式外观**
+   - 外层容器：`border-radius: 8px` + `border: 1px solid #e1e4e8` + `box-shadow: 0 4px 12px rgba(0,0,0,0.08)`
+   - 标题栏：`height: 40px` + `padding: 0 16px` + `border-bottom: 1px solid #e1e4e8`
+   - Mac风格工具栏（红黄绿三圆点）
+
+2. **横向滚动（不换行）**
+   - 代码区域：`white-space: pre` （禁止自动换行）
+   - 滚动支持：`overflow-x: scroll`
+   - 移动端优化：`-webkit-overflow-scrolling: touch`
+   - 行高：`line-height: 1.6`
+   - 内边距：`padding: 20px`
+
+3. **禁用旧样式**
+   - ❌ 禁止使用 `white-space: pre-wrap`（自动换行）
+   - ❌ 禁止使用 `word-wrap: break-word`
+   - ❌ 禁止使用 `word-break: break-all`
+
+#### 实现方式
+
+**方式一：直接使用 GitHub 主题（推荐）**
+
+GitHub 主题已内置卡片式+横向滚动样式，直接指定即可：
+
+```bash
+python {baseDir}/scripts/format.py --input "article.md" --theme github
+```
+
+**方式二：自定义主题继承**
+
+如果需要自定义主题，必须在主题 JSON 文件中包含以下配置：
+
+```json
+{
+  "styles": {
+    "code_block": {
+      "background": "#f6f8fa",
+      "border_radius": "8px",
+      "margin_top": "20px",
+      "margin_bottom": "20px",
+      "overflow": "hidden",
+      "border": "1px solid #e1e4e8",
+      "box_shadow": "0 4px 12px rgba(0,0,0,0.08)"
+    },
+    "code_header": {
+      "display": "flex",
+      "align_items": "center",
+      "height": "40px",
+      "padding": "0 16px",
+      "background": "#eef1f4",
+      "border_bottom": "1px solid #e1e4e8"
+    },
+    "pre": {
+      "background": "#f6f8fa",
+      "color": "#1f2328",
+      "padding": "20px",
+      "border_radius": "0",
+      "overflow_x": "scroll",
+      "margin_top": "0",
+      "margin_bottom": "0",
+      "font_size": "13px",
+      "line_height": "1.6",
+      "white_space": "pre",
+      "-webkit-overflow-scrolling": "touch"
+    }
+  }
+}
+```
+
+#### 触发条件
+
+以下情况必须应用此规则：
+- ✅ 文章包含代码块（```标记）
+- ✅ 教程类文章（编程、技术、操作指南）
+- ✅ 包含代码示例、命令行、配置文件等技术内容
+- ✅ 用户明确要求"代码不换行""卡片式代码"
+
+#### 验证清单
+
+生成 HTML 后，检查是否包含：
+- [ ] `white-space: pre` （不是 `pre-wrap`）
+- [ ] `overflow-x: scroll` （不是 `auto` 或缺失）
+- [ ] `border-radius: 8px` （不是 `6px`）
+- [ ] `box-shadow: 0 4px 12px` （存在阴影效果）
+
 ### 注意事项
 
 - 依赖 Python `markdown` 库（`pip install markdown`）
