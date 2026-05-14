@@ -42,11 +42,8 @@ let chromeProcess = null;
 let chromePid = null;
 
 // ==================== 关键修改：统一的持久化用户数据目录 ====================
-// 使用用户主目录下的固定位置，确保跨任务和重启后都能访问
-const PERSISTENT_USER_DATA_DIR = path.join(
-  process.env.USERPROFILE || process.env.HOME || 'C:\\Users\\DELL',
-  '.gemini-chrome-data'  // 用户主目录下的隐藏目录，确保持久化
-);
+// 使用公众号目录下的固定位置，确保跨任务和重启后都能访问
+const PERSISTENT_USER_DATA_DIR = 'D:\\公众号\\debug-user-data';
 
 console.log(`[Config] 用户数据目录: ${PERSISTENT_USER_DATA_DIR}`);
 
