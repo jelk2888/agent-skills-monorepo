@@ -79,11 +79,13 @@ function moveFile(src, dest) {
 }
 
 function generateUserDataDir() {
+  // 使用固定的持久化用户数据目录，确保登录状态保持
+  // 与 gemini_batch_gen.cjs 共享同一目录，Cookie 和登录状态互通
   return PERSISTENT_USER_DATA_DIR;
 }
 
 // ============ Chrome 进程管理 ============
-async function startChrome(headless = true) {
+async function startChrome(headless = true) {  // 默认 Headless (无窗口)，加 --no-headless 可弹出浏览器
   console.log('[Chrome] 启动新的 Chrome 实例...');
   if (headless) {
     console.log('[Chrome] 模式: Headless (无窗口)');
@@ -99,6 +101,7 @@ async function startChrome(headless = true) {
       fs.mkdirSync(userDataDir, { recursive: true });
     }
 
+    // 根据模式构建启动参数
     const chromeArgs = headless
       ? [
           '--headless=new',
@@ -303,17 +306,22 @@ async function gracefulShutdown(chromeProcess, cdp) {
   console.log('[shutdown] 正在优雅关闭浏览器...');
   
   try {
+    // 方法1: 通过 CDP 关闭页面（让 Chrome 有时间保存 Cookie）
     if (cdp) {
       try {
         await cdp.sendCommand('Page.close');
       } catch (e) {}
     }
     
+    // 方法2: 发送关闭信号给 Chrome 进程
     if (chromeProcess && !chromeProcess.killed) {
+      // 使用 SIGTERM 而非 SIGKILL，让 Chrome 优雅退出
       chromeProcess.kill('SIGTERM');
       
+      // 等待进程自然退出（最多10秒）
       await new Promise((resolve) => {
         const timeout = setTimeout(() => {
+          // 如果还没退出，强制关闭
           if (!chromeProcess.killed) {
             chromeProcess.kill('SIGKILL');
           }
@@ -459,6 +467,7 @@ async function createNewChat(cdp) {
 async function switchToQuickMode(cdp) {
   console.log(`  [2/5] 切换到快速模式...`);
 
+  // 先检查当前模式
   const currentMode = await cdp.evaluate(`
     (() => {
       const modeBtn = document.querySelector('button[aria-label="打开模式选择器"]');
@@ -469,11 +478,13 @@ async function switchToQuickMode(cdp) {
   const currentModeText = currentMode?.result?.result?.value || '';
   console.log(`  🔍 当前模式: ${currentModeText || '未知'}`);
 
+  // 如果已经是快速模式，跳过
   if (currentModeText.includes('快速') || currentModeText.includes('Quick')) {
     console.log(`  ✅ 已经是快速模式，跳过`);
     return;
   }
 
+  // 打开模式选择器 (Headless兼容)
   const openResult = await cdp.evaluate(`
     (() => {
       const btn = document.querySelector('button[aria-label="打开模式选择器"]');
@@ -489,6 +500,7 @@ async function switchToQuickMode(cdp) {
     console.log(`  ✅ 已打开模式选择器`);
     await sleep(2000);
 
+    // 选择快速模式 (Headless兼容)
     const selectResult = await cdp.evaluate(`
       (() => {
         const quickOption = document.querySelector('[data-test-id="bard-mode-option-快速"]');
@@ -525,6 +537,7 @@ async function switchToQuickMode(cdp) {
 async function sendPrompt(cdp, prompt) {
   console.log(`  [3/5] 发送提示词生成图片...`);
 
+  // 获取页面状态
   const pageInfo = await cdp.evaluate(`
     (() => {
       return {
@@ -538,6 +551,7 @@ async function sendPrompt(cdp, prompt) {
 
   console.log(`  📄 页面状态:`, JSON.stringify(pageInfo?.result?.result?.value || pageInfo));
 
+  // 查找输入框 - 使用 Quill 编辑器选择器 (gemini-skill 标准)
   const inputResult = await cdp.evaluate(`
     (() => {
       const selectors = [
@@ -566,6 +580,7 @@ async function sendPrompt(cdp, prompt) {
 
   console.log(`  ✅ 找到输入框`);
 
+  // 输入提示词 - 使用 execCommand insertText 方式 (gemini-skill 标准)
   const inputSuccess = await cdp.evaluate(`
     (() => {
       const selectors = [
@@ -610,6 +625,7 @@ async function sendPrompt(cdp, prompt) {
 
   await sleep(1000);
 
+  // 点击发送按钮 - 使用 gemini-skill 的 sendBtn 选择器
   const sendResult = await cdp.evaluate(`
     (() => {
       const sels = [
@@ -657,9 +673,10 @@ async function sendPrompt(cdp, prompt) {
 async function downloadImage(cdp, outputDir) {
   console.log(`  [4/5] 循环检测并下载生成的图片...`);
 
+  // ===== 步骤1: 循环检测图片 (getLatestImage), 最长等待120秒 =====
   let imgInfo = null;
   let detectRetry = 0;
-  const maxDetectRetries = 30;
+  const maxDetectRetries = 30;  // 30次 x 4秒 = 120秒
   const detectInterval = 4000;
 
   while (detectRetry < maxDetectRetries) {
@@ -709,11 +726,12 @@ async function downloadImage(cdp, outputDir) {
   
   if (!info.ok) {
     console.log(`  ⚠️ ${maxDetectRetries * detectInterval / 1000}秒内未检测到图片 (返回超时状态)`);
-    return 'timed_out';
+    return 'timed_out';  // 返回特殊值，让主循环决定下一步
   }
 
   console.log(`  📷 图片: ${info.width}x${info.height}, 位置(${info.x}, ${info.y})`);
 
+  // ===== 步骤2: 设置下载行为 (关键! 允许Chrome自动下载到目标目录) =====
   const downloadDir = path.resolve(outputDir || DOWNLOAD_DIR);
   console.log(`  🔧 设置下载行为到: ${downloadDir}`);
 
@@ -736,10 +754,12 @@ async function downloadImage(cdp, outputDir) {
     console.log(`  ⚠️ 设置下载行为失败: ${e.message}`);
   }
 
+  // 记录点击前的文件列表
   const originalFiles = fs.readdirSync(downloadDir)
     .filter(f => f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.jpeg') || f.endsWith('.webp'))
     .map(f => path.join(downloadDir, f));
 
+  // ===== 步骤3: Hover 到图片上触发工具栏 =====
   await sleep(500);
   
   await cdp.sendCommand('Input.dispatchMouseEvent', {
@@ -752,6 +772,7 @@ async function downloadImage(cdp, outputDir) {
   console.log(`  ✅ Hover 完成, 等待工具栏...`);
   await sleep(1500);
 
+  // ===== 步骤4: 点击"下载"按钮 =====
   let downloadClicked = false;
   
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -791,6 +812,7 @@ async function downloadImage(cdp, outputDir) {
     return null;
   }
 
+  // ===== 步骤5: 轮询等待文件下载完成 (最长60秒) =====
   console.log(`  ⏳ 等待文件下载完成 (最长60秒)...`);
 
   let downloadedFile = null;
@@ -841,6 +863,7 @@ async function downloadImage(cdp, outputDir) {
   const fileSize = getFileSize(downloadedFile);
   console.log(`  ✅ 文件已下载! ${path.basename(downloadedFile)} (${(fileSize / 1024).toFixed(1)} KB)`);
 
+  // ===== 步骤6: 去水印处理 =====
   if (removeWatermarkFromFile) {
     console.log(`  ✨ 去水印处理...`);
     try {
@@ -860,11 +883,17 @@ async function downloadImage(cdp, outputDir) {
   return downloadedFile;
 }
 
+// ============ 检测对话状态 ============
 async function checkBlankSession(cdp) {
   const result = await cdp.evaluate(`
     (() => {
+      // 检测 user-query 元素是否存在 (Gemini 对话中用户消息的容器)
       const userQueries = document.querySelectorAll('[class*="user-query"], [data-test-id*="user"], [class*="UserQuery"]');
+      
+      // 也检查是否有已加载的图片
       const images = document.querySelectorAll('img.image.loaded, img.image.animate.loaded');
+      
+      // 检查是否有消息内容区域
       const messageBubbles = document.querySelectorAll('[class*="message-bubble"], [class*="message-content"], [class*="markdown"]');
       
       return {
@@ -884,6 +913,7 @@ async function checkBlankSession(cdp) {
 async function deleteCurrentSession(cdp) {
   console.log(`  [5/5] 删除会话...`);
 
+  // 查找并点击对话的"更多选项"按钮 (Headless兼容: 不检查offsetWidth)
   const result = await cdp.evaluate(`
     (() => {
       const allButtons = Array.from(document.querySelectorAll('button'))
@@ -912,6 +942,7 @@ async function deleteCurrentSession(cdp) {
   console.log(`  ✅ 已打开更多选项菜单 (共${result.result.result.value.totalFound}个)`);
   await sleep(1500);
 
+  // 点击删除选项 (Headless兼容: 不检查offsetWidth)
   const deleteResult = await cdp.evaluate(`
     (() => {
       const deleteBtn = document.querySelector('[data-test-id*="delete"]');
@@ -940,11 +971,13 @@ async function deleteCurrentSession(cdp) {
   console.log(`  ✅ 已点击删除`);
   await sleep(1500);
 
+  // 确认删除 - 精准定位确认对话框中的"删除"按钮
   let confirmClicked = false;
   
   for (let attempt = 1; attempt <= 3; attempt++) {
     const confirmResult = await cdp.evaluate(`
       (() => {
+        // 方法1: 查找对话框/模态框中的按钮 (Headless兼容: 不检查offsetWidth)
         const dialogs = document.querySelectorAll('[role="dialog"], [role="alertdialog"], .modal, [class*="dialog"], [class*="Dialog"], [class*="confirm"], [class*="Confirm"]');
         
         for (const dialog of dialogs) {
@@ -958,6 +991,7 @@ async function deleteCurrentSession(cdp) {
           }
         }
 
+        // 方法2: 查找所有按钮，匹配精确文本 (Headless兼容)
         const allBtns = Array.from(document.querySelectorAll('button'));
         for (const btn of allBtns) {
           const text = (btn.textContent || '').trim();
@@ -967,6 +1001,7 @@ async function deleteCurrentSession(cdp) {
           }
         }
 
+        // 方法3: 宽松匹配（最后手段）
         for (const btn of allBtns) {
           const text = (btn.textContent || '').trim().toLowerCase();
           const label = (btn.getAttribute('aria-label') || '').toLowerCase();
@@ -1018,7 +1053,7 @@ async function deleteCurrentSession(cdp) {
 
 // ============ 批量生成主函数 ============
 async function batchGenerate(configPath, outputDir, options = {}) {
-  const useHeadless = options.headless !== false;
+  const useHeadless = options.headless !== false;  // 默认 Headless (无窗口)，加 --no-headless 可弹出浏览器
   const configs = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
   console.log(`\n📋 将生成 ${configs.length} 个项目`);
@@ -1066,6 +1101,7 @@ async function batchGenerate(configPath, outputDir, options = {}) {
     return;
   }
 
+  // 启动 Chrome
   const chromeInfo = await startChrome(useHeadless);
   if (!chromeInfo) {
     console.error('[Error] 无法启动 Chrome');
@@ -1075,15 +1111,18 @@ async function batchGenerate(configPath, outputDir, options = {}) {
   const { port, userDataDir } = chromeInfo;
   const chromeDebug = new ChromeRemoteDebug(port);
 
+  // 获取标签页
   console.log('[Chrome] 获取标签页信息...');
   await sleep(3000);
   await chromeDebug.getTargets();
 
+  // 打印所有目标以便调试
   console.log(`[Chrome] 找到 ${chromeDebug.targets.length} 个目标`);
   for (const t of chromeDebug.targets) {
     console.log(`  - ${t.id}: ${t.url} (${t.type})`);
   }
 
+  // 找到 Gemini 页面目标
   const geminiTarget = chromeDebug.targets.find(t =>
     t.url && t.url.includes('gemini.google.com') && t.type === 'page'
   );
@@ -1098,8 +1137,10 @@ async function batchGenerate(configPath, outputDir, options = {}) {
   const wsUrl = geminiTarget.webSocketDebuggerUrl;
   console.log(`[Chrome] 使用标签页: ${targetId} (${geminiTarget.url})`);
 
+  // 创建 CDP 客户端
   const cdp = new CDPClient(wsUrl);
 
+  // 连接 WebSocket
   console.log('[Chrome] 连接 CDP...');
   try {
     await cdp.connect();
@@ -1110,9 +1151,11 @@ async function batchGenerate(configPath, outputDir, options = {}) {
     return;
   }
 
+  // 等待页面加载
   console.log('⏳ 等待页面加载...');
   await sleep(5000);
 
+  // 验证页面，确保页面已完全加载
   let pageTitle = '';
   let pageUrl = '';
   let pageReady = false;
@@ -1143,10 +1186,12 @@ async function batchGenerate(configPath, outputDir, options = {}) {
     console.log(`  - 就绪状态: ${readyState}`);
     console.log(`  - 正文已加载: ${bodyLoaded}`);
     
+    // 检查是否为登录页面
     if (pageUrl.includes('signin') || pageUrl.includes('login')) {
       console.log('🔍 检测到登录页面，请手动登录...');
       console.log('请在打开的浏览器中登录 Google 账号，然后按 Enter 键继续...');
       
+      // 等待用户登录
       const readline = require('readline');
       const rl = readline.createInterface({
         input: process.stdin,
@@ -1164,6 +1209,7 @@ async function batchGenerate(configPath, outputDir, options = {}) {
       continue;
     }
     
+    // 检查页面是否已加载
     if (readyState === 'complete' && bodyLoaded && (pageTitle || pageUrl.includes('gemini.google.com'))) {
       pageReady = true;
       console.log('✅ 页面已成功加载');
@@ -1183,6 +1229,7 @@ async function batchGenerate(configPath, outputDir, options = {}) {
 
   console.log('[Chrome] 页面已成功加载');
 
+  // ===== Headless 模式: 激活页面确保DOM完全渲染 =====
   if (useHeadless) {
     console.log('[Chrome] 激活页面 (Headless模式)...');
     try {
@@ -1264,6 +1311,7 @@ async function batchGenerate(configPath, outputDir, options = {}) {
             console.log(`  ✅ 网页已刷新，等待8秒...`);
             await sleep(8000);
             
+            // 刷新后重新激活页面 (仅Headless模式)
             if (useHeadless) {
               console.log(`  🔄 重新激活页面...`);
               await cdp.sendCommand('Input.dispatchMouseEvent', {
@@ -1307,9 +1355,11 @@ async function batchGenerate(configPath, outputDir, options = {}) {
     }
   }
 
+  // 关闭 - 使用优雅关闭，确保 Cookie 和登录状态保存
   console.log('\n🔄 正在关闭...');
   await gracefulShutdown(chromeProcess, cdp);
 
+  // 保留用户数据目录，确保登录状态保持
   console.log('[Chrome] 用户数据目录已保留: ' + PERSISTENT_USER_DATA_DIR);
 
   console.log(`\n${'='.repeat(60)}`);
@@ -1357,7 +1407,7 @@ async function main() {
   const outputDir = args[1];
 
   const options = {
-    headless: !args.includes('--no-headless')
+    headless: !args.includes('--no-headless')  // 默认不弹出浏览器，加 --no-headless 可弹出
   };
 
   console.log(`\n🚀 模式: ${options.headless ? '🔒 Headless (无弹窗)' : '🖥️ 非Headless (弹出浏览器)'}`);

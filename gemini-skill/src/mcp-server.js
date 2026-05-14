@@ -338,29 +338,44 @@ server.registerTool(
       const extension = pathExtname(downloadResult.suggestedFilename) || '.html';
       const newFilename = `${newBasename}${extension}`;
 
+      console.error(`[mcp] 提取的文件名: ${newBasename}`);
+      console.error(`[mcp] 下载的原始文件名: ${downloadResult.suggestedFilename}`);
+      console.error(`[mcp] 最终文件名: ${newFilename}`);
+
       // 先复制到目标目录
       const downloadedFile = downloadResult.filePath;
       const tempTargetPath = pathJoin(targetDir, downloadResult.suggestedFilename);
       const finalTargetPath = pathJoin(targetDir, newFilename);
+
+      console.error(`[mcp] 临时文件路径: ${tempTargetPath}`);
+      console.error(`[mcp] 最终文件路径: ${finalTargetPath}`);
 
       copyFileSync(downloadedFile, tempTargetPath);
 
       // 重命名文件
       try {
         renameSync(tempTargetPath, finalTargetPath);
+        console.error(`[mcp] 重命名成功`);
       } catch (renameErr) {
         // 如果 rename 失败（跨设备等），用 copy + delete 方式
-        copyFileSync(tempTargetPath, finalTargetPath);
-        unlinkSync(tempTargetPath);
+        console.error(`[mcp] renameSync 失败，使用 copy+delete 方式: ${renameErr.message}`);
+        try {
+          copyFileSync(tempTargetPath, finalTargetPath);
+          unlinkSync(tempTargetPath);
+          console.error(`[mcp] copy+delete 方式成功`);
+        } catch (copyErr) {
+          console.error(`[mcp] copy+delete 方式也失败: ${copyErr.message}`);
+        }
       }
 
-      // 删除临时文件
+      // 删除原始下载的临时文件
       try {
         if (existsSync(downloadedFile)) {
           unlinkSync(downloadedFile);
+          console.error(`[mcp] 已删除原始下载文件`);
         }
       } catch (e) {
-        console.error(`[mcp] 删除临时文件失败: ${e.message}`);
+        console.error(`[mcp] 删除原始下载文件失败: ${e.message}`);
       }
 
       console.error(`[mcp] 代码已保存至 ${finalTargetPath}`);
